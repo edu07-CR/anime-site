@@ -2,16 +2,17 @@
 
 import { useEffect, useState, useRef } from 'react';
 import Link from 'next/link';
-import Image from 'next/image'; // <-- Importante para carregar a imagem
+import Image from 'next/image';
 import { usePathname, useRouter } from 'next/navigation';
-import { CalendarDays, Trophy, User, LogOut } from 'lucide-react';
+import { CalendarDays, Trophy, User, LogOut, Compass } from 'lucide-react'; // Adicionado Compass
 import { createClient } from '@/lib/supabase/client';
 import { User as SupabaseUser } from '@supabase/supabase-js';
 import { ThemeToggle } from './ThemeToggle';
 
 const navItems = [
   { name: 'Lançamentos', href: '/', icon: CalendarDays },
-  { name: 'Meu Top 5', href: '/top10', icon: Trophy }, // 👈 Mudar de /top5 para /top10
+  { name: 'Destaques', href: '/destaques', icon: Compass }, // <-- Nova aba adicionada
+  { name: 'Meu Top 5', href: '/top10', icon: Trophy },
 ];
 
 export function Navbar() {
@@ -32,7 +33,6 @@ export function Navbar() {
       setUser(user);
       
       if (user) {
-        // Puxa o username e o avatar_url de uma vez só
         const { data } = await supabase
           .from('profiles')
           .select('username, avatar_url')
@@ -48,15 +48,10 @@ export function Navbar() {
     getUser();
 
     const { data: authListener } = supabase.auth.onAuthStateChange((event, session) => {
-      const currentUser = session?.user || null;
-      setUser(currentUser);
-      
-      if (!currentUser) {
+      setUser(session?.user || null);
+      if (!session?.user) {
         setUsername('');
         setAvatarUrl('');
-      } else {
-        // Se logou, busca os dados de novo
-        getUser();
       }
     });
 
@@ -82,9 +77,7 @@ export function Navbar() {
 
   return (
     <>
-      {/* =========================================
-          DESKTOP (Topbar)
-          ========================================= */}
+      {/* DESKTOP */}
       <header className="hidden md:flex sticky top-0 z-50 w-full h-16 bg-surface/80 backdrop-blur-md border-b border-border items-center justify-between px-6 transition-colors duration-300">
         <Link href="/" className="flex items-center gap-2 group cursor-pointer">
           <div className="flex items-center justify-center w-8 h-8 rounded-full border-2 border-accent group-hover:bg-accent/10 transition-colors">
@@ -117,7 +110,6 @@ export function Navbar() {
             <ThemeToggle />
           </div>
 
-          {/* MENU DO PERFIL */}
           <div className="relative" ref={menuRef}>
             <button
               onClick={() => setIsMenuOpen(!isMenuOpen)}
@@ -127,7 +119,6 @@ export function Navbar() {
                   : 'bg-surface border-border text-muted hover:border-accent hover:text-text'
               }`}
             >
-              {/* Lógica do Avatar na Navbar */}
               {user ? (
                 <>
                   {avatarUrl ? (
@@ -151,20 +142,12 @@ export function Navbar() {
 
             {user && isMenuOpen && (
               <div className="absolute right-0 top-full mt-2 w-48 bg-surface border border-border rounded-lg shadow-xl py-2 flex flex-col z-50">
-                <Link 
-                  href="/perfil" 
-                  onClick={() => setIsMenuOpen(false)}
-                  className="px-4 py-2 text-sm text-text hover:bg-bg transition-colors cursor-pointer"
-                >
+                <Link href="/perfil" onClick={() => setIsMenuOpen(false)} className="px-4 py-2 text-sm text-text hover:bg-bg transition-colors cursor-pointer">
                   Ver meu perfil
                 </Link>
                 <div className="h-[1px] bg-border my-1" />
-                <button
-                  onClick={handleLogout}
-                  className="px-4 py-2 text-sm text-red-500 hover:bg-red-500/10 transition-colors flex items-center gap-2 text-left w-full cursor-pointer"
-                >
-                  <LogOut size={16} />
-                  Sair da conta
+                <button onClick={handleLogout} className="px-4 py-2 text-sm text-red-500 hover:bg-red-500/10 transition-colors flex items-center gap-2 text-left w-full cursor-pointer">
+                  <LogOut size={16} /> Sair da conta
                 </button>
               </div>
             )}
@@ -176,9 +159,7 @@ export function Navbar() {
         </nav>
       </header>
 
-      {/* =========================================
-          MOBILE (Bottom Bar)
-          ========================================= */}
+      {/* MOBILE */}
       <nav className="md:hidden fixed bottom-0 left-0 right-0 z-50 h-16 bg-surface/90 backdrop-blur-lg border-t border-border flex items-center justify-around pb-safe transition-colors duration-300">
         {navItems.map((item) => {
           const isActive = pathname === item.href;
@@ -234,20 +215,12 @@ export function Navbar() {
 
           {user && isMenuOpen && (
             <div className="absolute bottom-full mb-2 right-4 w-48 bg-surface border border-border rounded-lg shadow-xl py-2 flex flex-col z-50">
-              <Link 
-                href="/perfil" 
-                onClick={() => setIsMenuOpen(false)}
-                className="px-4 py-2 text-sm text-text hover:bg-bg transition-colors cursor-pointer"
-              >
+              <Link href="/perfil" onClick={() => setIsMenuOpen(false)} className="px-4 py-2 text-sm text-text hover:bg-bg transition-colors cursor-pointer">
                 Ver meu perfil
               </Link>
               <div className="h-[1px] bg-border my-1" />
-              <button
-                onClick={handleLogout}
-                className="px-4 py-2 text-sm text-red-500 hover:bg-red-500/10 transition-colors flex items-center gap-2 text-left w-full cursor-pointer"
-              >
-                <LogOut size={16} />
-                Sair da conta
+              <button onClick={handleLogout} className="px-4 py-2 text-sm text-red-500 hover:bg-red-500/10 transition-colors flex items-center gap-2 text-left w-full cursor-pointer">
+                <LogOut size={16} /> Sair da conta
               </button>
             </div>
           )}
@@ -255,10 +228,7 @@ export function Navbar() {
       </nav>
       
       {isMenuOpen && (
-        <div 
-          className="md:hidden fixed inset-0 bg-black/50 z-40" 
-          onClick={() => setIsMenuOpen(false)}
-        />
+        <div className="md:hidden fixed inset-0 bg-black/50 z-40" onClick={() => setIsMenuOpen(false)} />
       )}
     </>
   );
