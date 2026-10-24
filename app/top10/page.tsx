@@ -3,9 +3,10 @@
 import { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import { createClient } from '@/lib/supabase/client';
-import { Search, Loader2, GripVertical, X, Save, Star } from 'lucide-react';
+import { Search, Loader2, GripVertical, X, Save, Star, Play } from 'lucide-react';
 import Image from 'next/image';
 import { GeradorCard } from '@/components/top10/GeradorCard';
+import { StoriesPlayer } from '@/components/top10/StoriesPlayer';
 
 import {
   DndContext,
@@ -56,7 +57,7 @@ function SortableAnime({ anime, index, onRemove }: { anime: any, index: number, 
 }
 
 // --- Página Principal ---
-export default function Top5Page() {
+export default function Top10Page() {
   const supabase = createClient();
   const router = useRouter();
 
@@ -68,6 +69,9 @@ export default function Top5Page() {
   
   const [userId, setUserId] = useState<string | null>(null);
   const [username, setUsername] = useState<string>('usuario'); 
+  const [avatarUrl, setAvatarUrl] = useState<string>(''); 
+  
+  const [showStories, setShowStories] = useState(false);
 
   const sensors = useSensors(
     useSensor(PointerSensor, { activationConstraint: { distance: 5 } }),
@@ -87,20 +91,19 @@ export default function Top5Page() {
 
       const { data: profile } = await supabase
         .from('profiles')
-        .select('username')
+        .select('username, avatar_url')
         .eq('id', user.id)
         .single();
         
-      if (profile?.username) {
-        setUsername(profile.username);
-      }
+      if (profile?.username) setUsername(profile.username);
+      if (profile?.avatar_url) setAvatarUrl(profile.avatar_url);
 
       const { data } = await supabase
-        .from('user_top10') // A tabela no banco continua se chamando user_top10
+        .from('user_top10')
         .select('position, anime_id')
         .eq('user_id', user.id)
         .order('position', { ascending: true })
-        .limit(5); // Limitamos a busca para 5 no banco
+        .limit(5);
 
       if (data && data.length > 0) {
         const animePromises = data.map(async (item) => {
@@ -248,9 +251,20 @@ export default function Top5Page() {
             Salvar Meu Top 5
           </button>
 
-          {/* O Gerador de Card aparece quando tiver exatamente 5 animes */}
           {animes.length === 5 && (
-            <GeradorCard animes={animes} username={username} />
+            <div className="flex flex-col items-center gap-4 mt-6 w-full max-w-md mx-auto">
+              {/* Botão de Baixar Imagem (vem de dentro do GeradorCard) */}
+              <GeradorCard animes={animes} username={username} />
+
+              {/* Botão de Gerar Short (logo abaixo, com a mesma largura) */}
+              <button
+                onClick={() => setShowStories(true)}
+                className="flex items-center justify-center gap-2 bg-surface text-text border border-border w-full py-4 rounded-xl font-bold hover:border-accent hover:text-accent transition-all cursor-pointer h-[60px]"
+              >
+                <Play size={20} className="text-accent" />
+                Gerar Short (Gravar Tela)
+              </button>
+            </div>
           )}
         </div>
       ) : (
@@ -259,6 +273,15 @@ export default function Top5Page() {
           <h2 className="text-xl font-bold text-text mb-2">Seu Top 5 está vazio</h2>
           <p className="text-muted text-sm">Use a barra de busca acima para adicionar seus animes favoritos.</p>
         </div>
+      )}
+
+      {showStories && (
+        <StoriesPlayer 
+          animes={animes} 
+          username={username} 
+          avatarUrl={avatarUrl} 
+          onClose={() => setShowStories(false)} 
+        />
       )}
     </div>
   );
