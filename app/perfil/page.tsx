@@ -5,7 +5,6 @@ import Image from 'next/image';
 import { Settings, PlayCircle, CheckCircle2, Bookmark, Star } from 'lucide-react';
 import { SelecionarAvatar } from '@/components/perfil/SelecionarAvatar';
 
-// Força o Next.js a buscar dados frescos do banco
 export const dynamic = 'force-dynamic';
 
 export default async function PerfilPage() {
@@ -28,17 +27,33 @@ export default async function PerfilPage() {
     .eq('user_id', user.id)
     .order('updated_at', { ascending: false });
 
-  // 3. Busca os detalhes de cada anime na nossa API interna
+  // 3. Define a URL base corretamente (remove a barra do final se existir)
+  const siteUrl = process.env.NEXT_PUBLIC_SITE_URL 
+    ? process.env.NEXT_PUBLIC_SITE_URL.replace(/\/$/, '') 
+    : 'http://localhost:3000';
+
+  // 4. Busca os detalhes de cada anime na nossa API interna
   const animesDetalhes = await Promise.all(
     (userAnimes || []).map(async (item) => {
       try {
-        const res = await fetch(`${process.env.NEXT_PUBLIC_SITE_URL || 'http://localhost:3000'}/api/anime/${item.anime_id}`, {
+        const apiUrl = `${siteUrl}/api/anime/${item.anime_id}`;
+        
+        // Log para vermos no terminal da Vercel o que está sendo buscado
+        console.log(`🔍 Buscando detalhes do anime: ${apiUrl}`);
+        
+        const res = await fetch(apiUrl, {
           next: { revalidate: 3600 }
         });
-        if (!res.ok) return null;
+
+        if (!res.ok) {
+          console.error(`🚨 Erro na API para o ID ${item.anime_id}: Status ${res.status}`);
+          return null;
+        }
+
         const data = await res.json();
         return { ...data, status: item.status, rating: item.rating };
-      } catch {
+      } catch (error) {
+        console.error(`🚨 Erro no fetch para o ID ${item.anime_id}:`, error);
         return null;
       }
     })
@@ -50,7 +65,7 @@ export default async function PerfilPage() {
   const concluidos = animesValidos.filter(a => a.status === 'concluido');
   const quero = animesValidos.filter(a => a.status === 'quero');
 
-  // 4. Calcula a média de notas
+  // 5. Calcula a média de notas
   const notasValidas = animesValidos.filter(a => a.rating > 0);
   const mediaNotas = notasValidas.length > 0 
     ? (notasValidas.reduce((acc, a) => acc + a.rating, 0) / notasValidas.length).toFixed(1) 
@@ -103,8 +118,8 @@ export default async function PerfilPage() {
         </div>
       </div>
 
-      {/* LISTA DE ANIMES */}
-      <div className="space-y-8">
+      {/* LISTAS DE ANIMES */}
+      <div className="space-y-10">
         
         {/* ASSISTINDO */}
         {assistindo.length > 0 && (
@@ -172,7 +187,6 @@ function AnimeCard({ anime }: { anime: any }) {
       <div className="relative aspect-[2/3] w-full overflow-hidden">
         <Image src={anime.coverUrl} alt={anime.title} fill sizes="(max-width: 768px) 50vw, 20vw" className="object-cover group-hover:scale-110 transition-transform duration-300" />
         
-        {/* Nota (se tiver) */}
         {anime.rating > 0 && (
           <div className="absolute top-2 right-2 bg-black/70 text-yellow-400 text-xs font-bold px-2 py-1 rounded-md flex items-center gap-1">
             <Star size={12} fill="currentColor" /> {anime.rating}
@@ -184,4 +198,4 @@ function AnimeCard({ anime }: { anime: any }) {
       </div>
     </Link>
   );
-}
+}git add .
