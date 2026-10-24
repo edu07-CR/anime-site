@@ -198,4 +198,4 @@ function AnimeCard({ anime }: { anime: any }) {
       </div>
     </Link>
   );
-}git add .
+}
