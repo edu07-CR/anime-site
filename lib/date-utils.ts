@@ -1,6 +1,6 @@
 // lib/date-utils.ts
-import { AiringSchedule, AnimeCardData } from "./anilist/types";
-import { mapAnimeToCard } from "./anilist/mappers";
+import { AiringSchedule, AnimeCardData } from "./aniliist/types";
+import { mapAnimeToCard } from "./aniliist/mappers";
 
 // Converte o timestamp da AniList para o dia da semana no Brasil
 export function getBrazilianWeekday(timestampInSeconds: number): string {
