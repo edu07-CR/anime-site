@@ -8,7 +8,7 @@ import { CalendarDays, Trophy, User, LogOut, Compass } from 'lucide-react'; // A
 import { createClient } from '@/lib/supabase/client';
 import { User as SupabaseUser } from '@supabase/supabase-js';
 import { ThemeToggle } from './ThemeToggle';
-
+import { Notificacoes } from './Notificacoes';
 const navItems = [
   { name: 'Lançamentos', href: '/', icon: CalendarDays },
   { name: 'Destaques', href: '/destaques', icon: Compass }, // <-- Nova aba adicionada
@@ -109,6 +109,7 @@ export function Navbar() {
           <div className="mx-2">
             <ThemeToggle />
           </div>
+          <Notificacoes /> 
 
           <div className="relative" ref={menuRef}>
             <button
