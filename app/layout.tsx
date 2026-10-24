@@ -2,6 +2,7 @@ import type { Metadata } from "next";
 import { Geist, Geist_Mono } from "next/font/google";
 import "./globals.css";
 import { Navbar } from "@/components/layout/Navbar";
+import { Footer } from "@/components/layout/Footer"; // <-- Import do Footer
 
 const geistSans = Geist({
   variable: "--font-geist-sans",
@@ -20,7 +21,7 @@ export const metadata: Metadata = {
 
 export default function RootLayout({
   children,
-  modal, // <-- O Next.js vai injetar a rota interceptada aqui
+  modal,
 }: Readonly<{
   children: React.ReactNode;
   modal: React.ReactNode;
@@ -29,11 +30,15 @@ export default function RootLayout({
     <html lang="pt-BR">
       <body className={`${geistSans.variable} ${geistMono.variable} antialiased min-h-screen flex flex-col bg-bg`}>
         <Navbar />
+        
         <main className="flex-1 w-full max-w-7xl mx-auto px-4 md:px-6 pt-6 pb-24 md:pb-12">
           {children}
         </main>
-        
-        {/* O Modal será renderizado aqui (por cima da Home) */}
+
+        {/* O Footer agora aparece em todas as páginas */}
+        <Footer />
+
+        {/* O Modal (Login/Destaques) é renderizado aqui por cima de tudo */}
         {modal}
       </body>
     </html>
