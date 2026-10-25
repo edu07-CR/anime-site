@@ -2,8 +2,7 @@ import { createClient } from '@/lib/supabase/server';
 import { redirect } from 'next/navigation';
 import Link from 'next/link';
 import Image from 'next/image';
-import { Settings, PlayCircle, CheckCircle2, Bookmark, Star } from 'lucide-react';
-import { SelecionarAvatar } from '@/components/perfil/SelecionarAvatar';
+import { Settings, PlayCircle, CheckCircle2, Bookmark, Star, User } from 'lucide-react';
 
 export const dynamic = 'force-dynamic';
 
@@ -13,12 +12,14 @@ export default async function PerfilPage() {
 
   if (!user) redirect('/login');
 
+  // 1. Busca perfil
   const { data: profile } = await supabase
     .from('profiles')
     .select('username, avatar_url')
     .eq('id', user.id)
     .single();
 
+  // 2. Busca todos os animes salvos pelo usuário
   const { data: userAnimes } = await supabase
     .from('user_anime')
     .select('anime_id, status, rating')
@@ -31,7 +32,16 @@ export default async function PerfilPage() {
       <div className="w-full max-w-5xl mx-auto py-8">
         <div className="flex flex-col md:flex-row md:items-center justify-between gap-6 mb-10 bg-surface border border-border p-6 md:p-8 rounded-2xl">
           <div className="flex items-center gap-5">
-            <SelecionarAvatar avatarAtual={profile?.avatar_url || ''} />
+            {/* Avatar Estático */}
+            <div className="relative w-20 h-20 rounded-full overflow-hidden border-4 border-accent bg-surface shadow-lg">
+              {profile?.avatar_url ? (
+                <Image src={profile.avatar_url} alt="Avatar" fill className="object-cover" />
+              ) : (
+                <div className="w-full h-full flex items-center justify-center text-accent">
+                  <User size={40} />
+                </div>
+              )}
+            </div>
             <div>
               <h1 className="text-3xl font-bold text-text">{profile?.username || user.email}</h1>
               <p className="text-muted mt-1">Bem-vindo ao seu espaço no AniVerse.</p>
@@ -92,7 +102,7 @@ export default async function PerfilPage() {
     })
   );
 
-  // Filtra nulos e separa por status (Adicionado 'any' para o TypeScript não reclamar)
+  // Filtra nulos e separa por status
   const animesValidos = animesDetalhes.filter(Boolean) as any[];
   const assistindo = animesValidos.filter((a: any) => a.status === 'assistindo');
   const concluidos = animesValidos.filter((a: any) => a.status === 'concluido');
@@ -107,9 +117,19 @@ export default async function PerfilPage() {
 
   return (
     <div className="w-full max-w-5xl mx-auto py-8">
+      {/* CABEÇALHO DO PERFIL */}
       <div className="flex flex-col md:flex-row md:items-center justify-between gap-6 mb-10 bg-surface border border-border p-6 md:p-8 rounded-2xl">
         <div className="flex items-center gap-5">
-          <SelecionarAvatar avatarAtual={profile?.avatar_url || ''} />
+          {/* Avatar Estático */}
+          <div className="relative w-20 h-20 rounded-full overflow-hidden border-4 border-accent bg-surface shadow-lg">
+            {profile?.avatar_url ? (
+              <Image src={profile.avatar_url} alt="Avatar" fill className="object-cover" />
+            ) : (
+              <div className="w-full h-full flex items-center justify-center text-accent">
+                <User size={40} />
+              </div>
+            )}
+          </div>
           <div>
             <h1 className="text-3xl font-bold text-text">{nomeExibicao}</h1>
             <p className="text-muted mt-1">Bem-vindo ao seu espaço no AniVerse.</p>
@@ -120,6 +140,7 @@ export default async function PerfilPage() {
         </Link>
       </div>
 
+      {/* ESTATÍSTICAS */}
       <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-10">
         <div className="bg-surface border border-border p-4 rounded-xl flex flex-col items-center justify-center">
           <div className="text-blue-500 mb-2"><PlayCircle size={24} /></div>
@@ -143,6 +164,7 @@ export default async function PerfilPage() {
         </div>
       </div>
 
+      {/* LISTAS DE ANIMES */}
       <div className="space-y-10">
         {assistindo.length > 0 && (
           <section>
@@ -181,11 +203,16 @@ export default async function PerfilPage() {
   );
 }
 
+// --- Componente do Card de Anime ---
 function AnimeCard({ anime }: { anime: any }) {
   return (
-    <Link href={`/anime/${anime.id}`} className="group flex flex-col bg-surface rounded-xl overflow-hidden border border-border hover:border-accent transition-all shadow-sm">
+    <Link 
+      href={`/anime/${anime.id}`} 
+      className="group flex flex-col bg-surface rounded-xl overflow-hidden border border-border hover:border-accent transition-all shadow-sm"
+    >
       <div className="relative aspect-[2/3] w-full overflow-hidden">
         <Image src={anime.coverUrl} alt={anime.title} fill sizes="(max-width: 768px) 50vw, 20vw" className="object-cover group-hover:scale-110 transition-transform duration-300" />
+        
         {anime.rating > 0 && (
           <div className="absolute top-2 right-2 bg-black/70 text-yellow-400 text-xs font-bold px-2 py-1 rounded-md flex items-center gap-1">
             <Star size={12} fill="currentColor" /> {anime.rating}

@@ -5,15 +5,14 @@ import { useRouter } from 'next/navigation';
 import { createClient } from '@/lib/supabase/client';
 import { Mail, Lock, Loader2, ArrowLeft, Eye, EyeOff, User } from 'lucide-react';
 import Link from 'next/link';
+import { SeletorAvatares } from '@/components/perfil/SelecionarAvatar';
 
 export default function LoginPage() {
-  // 🕵️‍♂️ LOG DE DEPURAÇÃO: Se isso aparecer no terminal, o arquivo está sendo lido!
-  console.log("🕵️‍♂️ [DEBUG] O componente LoginPage foi carregado!");
-
   const [isLogin, setIsLogin] = useState(true);
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [username, setUsername] = useState('');
+  const [avatarUrl, setAvatarUrl] = useState(''); // Estado para o avatar
   
   const [showPassword, setShowPassword] = useState(false);
   const [loading, setLoading] = useState(false);
@@ -30,6 +29,7 @@ export default function LoginPage() {
     setLoading(true);
     setError(null);
 
+    // Validação de E-mail
     const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
     if (!emailRegex.test(email)) {
       setError('Por favor, insira um e-mail válido.');
@@ -44,6 +44,7 @@ export default function LoginPage() {
       return;
     }
 
+    // Validações de Cadastro
     if (!isLogin) {
       if (password.length < 6) {
         setError('A senha deve ter no mínimo 6 caracteres.');
@@ -66,6 +67,11 @@ export default function LoginPage() {
         setLoading(false);
         return;
       }
+      if (!avatarUrl) {
+        setError('Escolha um avatar para continuar.');
+        setLoading(false);
+        return;
+      }
     }
 
     try {
@@ -73,14 +79,22 @@ export default function LoginPage() {
         const { error } = await supabase.auth.signInWithPassword({ email, password });
         if (error) throw error;
       } else {
-        const { error } = await supabase.auth.signUp({ 
-          email, password, options: { data: { username } }
+        // Cria a conta e envia o username/avatar nos metadados
+        const { data: authData, error: authError } = await supabase.auth.signUp({ 
+          email, 
+          password, 
+          options: { data: { username, avatar_url: avatarUrl } } 
         });
-        if (error) throw error;
+        if (authError) throw authError;
+
+        // Se a conta foi criada, atualiza o avatar no perfil (caso o trigger não tenha feito)
+        if (authData.user) {
+          await supabase.from('profiles').update({ avatar_url: avatarUrl }).eq('id', authData.user.id);
+        }
       }
       
-      router.push('/'); 
-      router.refresh();
+      window.location.href = '/';
+ 
     } catch (err: any) {
       if (err.message.includes('Invalid login credentials')) setError('E-mail ou senha incorretos.');
       else if (err.message.includes('User already registered')) setError('Este e-mail já está cadastrado.');
@@ -91,7 +105,6 @@ export default function LoginPage() {
   };
 
   const handleSocialLogin = async (provider: 'google' | 'facebook') => {
-    console.log(`🕵️‍♂️ [DEBUG] Tentando login com ${provider}...`);
     setSocialLoading(provider);
     setError(null);
 
@@ -103,7 +116,6 @@ export default function LoginPage() {
     });
 
     if (error) {
-      console.error(`🚨 [DEBUG] Erro no login social:`, error);
       setError(`Erro ao entrar com ${provider}. Tente novamente.`);
       setSocialLoading(null);
     }
@@ -121,7 +133,7 @@ export default function LoginPage() {
 
         <div className="text-center mb-8">
           <h1 className="text-2xl font-bold text-text mb-2">
-            {isLogin ? 'TESTES 123' : 'Crie sua conta'}
+            {isLogin ? 'Bem-vindo de volta' : 'Crie sua conta'}
           </h1>
           <p className="text-muted text-sm">
             {isLogin ? 'Entre para salvar seus animes e notas.' : 'Junte-se ao AniVerse e monte seu Top 5.'}
@@ -134,7 +146,6 @@ export default function LoginPage() {
           </div>
         )}
 
-        {/* FORMULÁRIO DE E-MAIL */}
         <form onSubmit={handleAuth} className="flex flex-col gap-4">
           {!isLogin && (
             <div className="relative">
@@ -165,12 +176,19 @@ export default function LoginPage() {
             </button>
           </div>
 
+          {/* SELETOR DE AVATARES (APARECE SÓ NO CADASTRO) */}
+          {!isLogin && (
+            <div className="mt-2">
+              <label className="text-sm font-semibold text-text mb-2 block">Escolha seu avatar</label>
+              <SeletorAvatares selectedAvatar={avatarUrl} onSelect={setAvatarUrl} />
+            </div>
+          )}
+
           <button type="submit" disabled={loading} className="w-full bg-accent text-white font-bold py-3 rounded-lg hover:bg-accent/90 transition-all mt-2 flex items-center justify-center gap-2 disabled:opacity-50 cursor-pointer">
             {loading ? <Loader2 className="animate-spin" size={20} /> : (isLogin ? 'Entrar' : 'Criar Conta')}
           </button>
         </form>
 
-        {/* DIVISOR E BOTÕES SOCIAIS */}
         <div className="relative my-6">
           <div className="absolute inset-0 flex items-center"><div className="w-full border-t border-border"></div></div>
           <div className="relative flex justify-center text-xs uppercase"><span className="bg-surface px-2 text-muted">Ou continue com</span></div>
