@@ -49,9 +49,7 @@ export default function ChatPage() {
         'postgres_changes',
         { event: 'INSERT', schema: 'public', table: 'chat_messages' },
         (payload) => {
-          // Ignora mensagens do próprio usuário (já foram adicionadas na tela)
-          if (payload.new.user_id === userId) return;
-
+          // Busca o perfil de quem enviou e adiciona a mensagem na tela
           supabase
             .from('profiles')
             .select('username, avatar_url')
@@ -66,7 +64,11 @@ export default function ChatPage() {
                 profiles: profile || { username: 'Usuário', avatar_url: '' }
               } as Message;
 
-              setMessages((prev) => [...prev, newMsg]);
+              // Adiciona a mensagem (sem duplicar)
+              setMessages((prev) => {
+                if (prev.some(m => m.id === newMsg.id)) return prev;
+                return [...prev, newMsg];
+              });
               setTimeout(scrollToBottom, 100);
             });
         }
@@ -78,55 +80,26 @@ export default function ChatPage() {
     };
 
     init();
-  }, [userId]);
+  }, []);
 
   const sendMessage = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!newMessage.trim() || !userId) return;
     
     const content = newMessage.trim();
-    setNewMessage('');
+    setNewMessage(''); // Limpa o input imediatamente
     
-    // 1. Adiciona na tela na hora (Otimista)
-    const tempId = `temp-${Date.now()}`;
-    const tempMsg = {
-      id: tempId,
-      content: content,
-      created_at: new Date().toISOString(),
-      user_id: userId,
-      profiles: { username: 'Você', avatar_url: '' } // Ícone padrão para a própria mensagem
-    };
-    setMessages((prev) => [...prev, tempMsg as Message]);
-    setTimeout(scrollToBottom, 100);
-
-    // 2. Envia para o banco
-    const { data, error } = await supabase
-      .from('chat_messages')
-      .insert({ user_id: userId, content: content })
-      .select()
-      .single();
-
-    if (error) {
-      setMessages((prev) => prev.filter(m => m.id !== tempId));
-      alert("Erro ao enviar");
-    } else {
-      // 3. Troca o ID temporário pelo ID real do banco
-      setMessages((prev) => 
-        prev.map(m => m.id === tempId ? { ...m, id: data.id } : m)
-      );
-    }
+    // Envia para o banco. O Realtime vai avisar quando a mensagem for salva.
+    await supabase.from('chat_messages').insert({ user_id: userId, content: content });
   };
 
   const deleteMessage = async (id: string) => {
-    if (id.startsWith('temp-')) return; // Não tenta apagar mensagens temporárias
     await supabase.from('chat_messages').delete().eq('id', id);
     setMessages((prev) => prev.filter(m => m.id !== id));
   };
 
   return (
     <div className="w-full max-w-4xl mx-auto py-4 md:py-8 h-[calc(100vh-140px)] flex flex-col">
-      
-      {/* Cabeçalho do Chat */}
       <div className="bg-surface border border-border rounded-t-2xl p-4 flex items-center justify-between z-10 shadow-sm">
         <div className="flex items-center gap-3">
           <div className="w-10 h-10 bg-accent/10 rounded-full flex items-center justify-center text-accent">
@@ -134,7 +107,6 @@ export default function ChatPage() {
           </div>
           <div>
             <h1 className="text-xl font-bold text-text">Chat da Comunidade</h1>
-            {/* 👇 AVISO DAS 24 HORAS AQUI 👇 */}
             <p className="text-xs text-muted">Converse em tempo real. As mensagens são apagadas após 24h.</p>
           </div>
         </div>
@@ -143,21 +115,16 @@ export default function ChatPage() {
         </Link>
       </div>
 
-      {/* Área das Mensagens */}
       <div className="flex-1 bg-bg border-x border-border overflow-y-auto p-4 flex flex-col gap-4">
         {loading ? (
           <div className="flex justify-center items-center h-full"><Loader2 className="animate-spin text-accent" size={32} /></div>
         ) : messages.length === 0 ? (
-          <div className="text-center text-muted my-auto">
-            Nenhuma mensagem ainda. Seja o primeiro a falar!
-          </div>
+          <div className="text-center text-muted my-auto">Nenhuma mensagem ainda. Seja o primeiro a falar!</div>
         ) : (
           messages.map((msg) => {
             const isMe = msg.user_id === userId;
             return (
               <div key={msg.id} className={`flex gap-3 ${isMe ? 'flex-row-reverse' : ''}`}>
-                
-                {/* Avatar */}
                 <div className="relative w-8 h-8 rounded-full overflow-hidden flex-shrink-0 bg-border">
                   {msg.profiles?.avatar_url ? (
                     <Image src={msg.profiles.avatar_url} alt="Avatar" fill sizes="32px" className="object-cover" />
@@ -167,13 +134,10 @@ export default function ChatPage() {
                     </div>
                   )}
                 </div>
-
-                {/* Balão da Mensagem */}
                 <div className={`flex flex-col max-w-[75%] ${isMe ? 'items-end' : 'items-start'}`}>
                   <span className="text-[10px] text-muted mb-1 px-1">{msg.profiles?.username || 'Usuário'}</span>
-                  
                   <div className="flex items-center gap-2 group">
-                    {isMe && !msg.id.startsWith('temp-') && (
+                    {isMe && (
                       <button onClick={() => deleteMessage(msg.id)} className="opacity-0 group-hover:opacity-100 text-red-500 hover:text-red-400 transition-opacity cursor-pointer">
                         <Trash2 size={14} />
                       </button>
@@ -184,7 +148,6 @@ export default function ChatPage() {
                       {msg.content}
                     </div>
                   </div>
-
                   <span className="text-[9px] text-muted mt-1 px-1">
                     {new Date(msg.created_at).toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' })}
                   </span>
@@ -196,7 +159,6 @@ export default function ChatPage() {
         <div ref={messagesEndRef} />
       </div>
 
-      {/* Input de Mensagem */}
       <div className="bg-surface border border-border rounded-b-2xl p-4">
         {userId ? (
           <form onSubmit={sendMessage} className="flex gap-2">
@@ -207,11 +169,7 @@ export default function ChatPage() {
               placeholder="Digite sua mensagem..."
               className="flex-1 bg-bg border border-border text-text rounded-xl py-3 px-4 focus:outline-none focus:border-accent transition-colors"
             />
-            <button 
-              type="submit" 
-              disabled={!newMessage.trim()}
-              className="bg-accent text-white p-3 rounded-xl hover:bg-accent/90 transition-colors disabled:opacity-50 cursor-pointer"
-            >
+            <button type="submit" disabled={!newMessage.trim()} className="bg-accent text-white p-3 rounded-xl hover:bg-accent/90 transition-colors disabled:opacity-50 cursor-pointer">
               <Send size={20} />
             </button>
           </form>

@@ -2,7 +2,7 @@
 
 import { useState, useEffect, useRef } from 'react';
 import Image from 'next/image';
-import { X, Play, Pause, Info, Volume2, VolumeX } from 'lucide-react'; // Adicionado ícones de som
+import { X, Play, Pause, Info, Share2 } from 'lucide-react'; // Adicionado Share2
 
 interface AnimeData {
   id: number;
@@ -25,12 +25,10 @@ export function StoriesPlayer({
   const [indexAtual, setIndexAtual] = useState(0);
   const [isPlaying, setIsPlaying] = useState(true);
   const [progresso, setProgresso] = useState(0);
-  const [isMuted, setIsMuted] = useState(false); // Controle de mudo
   
   const whooshRef = useRef<HTMLAudioElement>(null);
   const musicRef = useRef<HTMLAudioElement>(null);
 
-  // 1. Lógica de troca de slides
   useEffect(() => {
     if (!isPlaying || animes.length === 0) return;
 
@@ -57,7 +55,6 @@ export function StoriesPlayer({
     return () => clearInterval(timer);
   }, [isPlaying, indexAtual, animes.length]);
 
-  // 2. Toca o som de transição (whoosh) a cada slide
   useEffect(() => {
     if (whooshRef.current) {
       whooshRef.current.currentTime = 0;
@@ -65,28 +62,35 @@ export function StoriesPlayer({
     }
   }, [indexAtual]);
 
-  // 3. Toca a música de fundo quando o componente monta
   useEffect(() => {
     if (musicRef.current) {
-      musicRef.current.volume = 0.3; // Volume mais baixo (30%) para não abafar
-      musicRef.current.play().catch(() => {
-        // Se o navegador bloquear o autoplay, só avisa no console
-        console.log("Autoplay de música bloqueado.");
-      });
+      musicRef.current.volume = 0.3;
+      musicRef.current.play().catch(() => {});
     }
-    
     return () => {
-      if (musicRef.current) {
-        musicRef.current.pause();
-      }
+      if (musicRef.current) musicRef.current.pause();
     };
   }, []);
 
-  // Função para mutar/desmutar
-  const toggleMute = () => {
-    if (musicRef.current) {
-      musicRef.current.muted = !isMuted;
-      setIsMuted(!isMuted);
+  // Função para compartilhar o link do site
+  const handleShare = async () => {
+    const url = window.location.origin; // Pega a URL base do site
+    const shareData = {
+      title: 'AniVerse | Lançamentos e Top 5',
+      text: `Olha o meu Top 5 de animes no AniVerse! @${username}`,
+      url: url,
+    };
+
+    try {
+      if (navigator.share) {
+        await navigator.share(shareData);
+      } else {
+        // Fallback: copia para a área de transferência
+        await navigator.clipboard.writeText(url);
+        alert('Link do AniVerse copiado para a área de transferência!');
+      }
+    } catch (error) {
+      console.log('Compartilhamento cancelado ou falhou', error);
     }
   };
 
@@ -97,14 +101,11 @@ export function StoriesPlayer({
   return (
     <div className="fixed inset-0 z-[200] bg-black flex items-center justify-center">
       
-      {/* 🎵 ÁUDIOS (Invisíveis) */}
       <audio ref={whooshRef} src="/sounds/whoosh.mp3" preload="auto" />
       <audio ref={musicRef} src="/sounds/musica-fundo.mp3" loop preload="auto" />
 
-      {/* Container 9:16 */}
       <div className="relative w-full h-full max-w-md aspect-[9/16] bg-[#0a0a0f] overflow-hidden shadow-2xl">
         
-        {/* Fundo Desfocado */}
         <div className="absolute inset-0">
           <Image 
             src={animeAtual.coverUrl} 
@@ -116,21 +117,17 @@ export function StoriesPlayer({
           <div className="absolute inset-0 bg-gradient-to-b from-black/60 via-black/40 to-black" />
         </div>
 
-        {/* Barra de Progresso */}
         <div className="absolute top-4 left-4 right-4 flex gap-1 z-50">
           {animes.map((_, idx) => (
             <div key={idx} className="h-1 flex-1 bg-white/30 rounded-full overflow-hidden">
               <div 
                 className="h-full bg-white transition-all duration-75 ease-linear"
-                style={{ 
-                  width: idx < indexAtual ? '100%' : idx === indexAtual ? `${progresso}%` : '0%' 
-                }}
+                style={{ width: idx < indexAtual ? '100%' : idx === indexAtual ? `${progresso}%` : '0%' }}
               />
             </div>
           ))}
         </div>
 
-        {/* Topo: Avatar, Controles e Mudo */}
         <div className="absolute top-8 left-4 right-4 flex items-center justify-between z-50">
           <div className="flex items-center gap-2">
             <div className="relative w-10 h-10 rounded-full border-2 border-accent overflow-hidden bg-surface">
@@ -144,10 +141,6 @@ export function StoriesPlayer({
           </div>
 
           <div className="flex items-center gap-2">
-            {/* Botão de Mudo */}
-            <button onClick={toggleMute} className="text-white p-2 cursor-pointer bg-black/30 rounded-full backdrop-blur-sm">
-              {isMuted ? <VolumeX size={18} /> : <Volume2 size={18} />}
-            </button>
             <button onClick={() => setIsPlaying(!isPlaying)} className="text-white p-2 cursor-pointer bg-black/30 rounded-full backdrop-blur-sm">
               {isPlaying ? <Pause size={18} /> : <Play size={18} />}
             </button>
@@ -157,9 +150,7 @@ export function StoriesPlayer({
           </div>
         </div>
 
-        {/* Conteúdo Central */}
         <div className="absolute inset-0 flex flex-col items-center justify-center p-6 z-10 text-center pt-20 pb-24">
-          
           <div className="mb-4 bg-accent text-white font-black text-4xl w-16 h-16 flex items-center justify-center rounded-2xl shadow-xl shadow-accent/50">
             #{indexAtual + 1}
           </div>
@@ -175,10 +166,9 @@ export function StoriesPlayer({
           <div className="flex items-center gap-2 bg-black/60 backdrop-blur-sm px-4 py-1.5 rounded-full text-yellow-400 font-bold text-sm">
             ⭐ {animeAtual.score}
           </div>
-
         </div>
 
-        {/* Rodapé: Logo + Dica */}
+        {/* RODAPÉ: Logo, Dica e Botão de Compartilhar */}
         <div className="absolute bottom-6 left-0 right-0 flex flex-col items-center justify-center gap-3 z-50">
           <div className="flex items-center gap-2">
             <div className="w-8 h-8 rounded-full border-2 border-accent flex items-center justify-center bg-black/50">
@@ -191,6 +181,15 @@ export function StoriesPlayer({
             <Info size={12} />
             Grave a tela do seu celular para postar!
           </div>
+
+          {/* BOTÃO DE COMPARTILHAR */}
+          <button
+            onClick={handleShare}
+            className="flex items-center gap-2 bg-white/10 hover:bg-white/20 text-white px-4 py-2 rounded-full text-sm font-medium backdrop-blur-sm transition-colors cursor-pointer mt-2"
+          >
+            <Share2 size={16} />
+            Compartilhar o AniVerse
+          </button>
         </div>
 
       </div>
