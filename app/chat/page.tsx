@@ -2,7 +2,7 @@
 
 import { useState, useEffect, useRef } from 'react';
 import { createClient } from '@/lib/supabase/client';
-import { Send, Loader2, MessageSquare, ArrowLeft, Trash2 } from 'lucide-react';
+import { Send, Loader2, MessageSquare, ArrowLeft, Trash2, Lock } from 'lucide-react';
 import Image from 'next/image';
 import Link from 'next/link';
 
@@ -21,6 +21,7 @@ export default function ChatPage() {
   const [newMessage, setNewMessage] = useState('');
   const [loading, setLoading] = useState(true);
   const [userId, setUserId] = useState<string | null>(null);
+  const [chatEnabled, setChatEnabled] = useState<boolean | null>(null);
   
   const messagesEndRef = useRef<HTMLDivElement>(null);
 
@@ -30,9 +31,20 @@ export default function ChatPage() {
 
   useEffect(() => {
     const init = async () => {
+      // 1. Verifica se o chat está bloqueado ou liberado
+      const { data: config } = await supabase.from('site_config').select('chat_enabled').single();
+      setChatEnabled(config?.chat_enabled ?? false);
+
+      if (!config?.chat_enabled) {
+        setLoading(false);
+        return; // Se estiver bloqueado, nem tenta carregar as mensagens
+      }
+
+      // 2. Pega o usuário logado
       const { data: { user } } = await supabase.auth.getUser();
       if (user) setUserId(user.id);
 
+      // 3. Busca mensagens antigas
       const { data: oldMessages } = await supabase
         .from('chat_messages')
         .select(`id, content, created_at, user_id, profiles (username, avatar_url)`)
@@ -43,13 +55,13 @@ export default function ChatPage() {
       setLoading(false);
       setTimeout(scrollToBottom, 100);
 
+      // 4. Configura o Realtime
       const channel = supabase.channel(`chat-${Math.random()}`);
 
       channel.on(
         'postgres_changes',
         { event: 'INSERT', schema: 'public', table: 'chat_messages' },
         (payload) => {
-          // Busca o perfil de quem enviou e adiciona a mensagem na tela
           supabase
             .from('profiles')
             .select('username, avatar_url')
@@ -64,7 +76,6 @@ export default function ChatPage() {
                 profiles: profile || { username: 'Usuário', avatar_url: '' }
               } as Message;
 
-              // Adiciona a mensagem (sem duplicar)
               setMessages((prev) => {
                 if (prev.some(m => m.id === newMsg.id)) return prev;
                 return [...prev, newMsg];
@@ -87,9 +98,8 @@ export default function ChatPage() {
     if (!newMessage.trim() || !userId) return;
     
     const content = newMessage.trim();
-    setNewMessage(''); // Limpa o input imediatamente
+    setNewMessage(''); 
     
-    // Envia para o banco. O Realtime vai avisar quando a mensagem for salva.
     await supabase.from('chat_messages').insert({ user_id: userId, content: content });
   };
 
@@ -98,6 +108,30 @@ export default function ChatPage() {
     setMessages((prev) => prev.filter(m => m.id !== id));
   };
 
+  // --- TELA DE CHAT BLOQUEADO ---
+  if (chatEnabled === false) {
+    return (
+      <div className="flex flex-col items-center justify-center min-h-[60vh] text-center px-4">
+        <div className="w-20 h-20 bg-surface border border-border rounded-full flex items-center justify-center mb-6">
+          <Lock size={40} className="text-muted" />
+        </div>
+        <h1 className="text-3xl font-bold text-text mb-2">Chat em Manutenção</h1>
+        <p className="text-muted max-w-md">
+          Estamos preparando a comunidade do AniVerse para você. O chat será liberado em breve!
+        </p>
+        <Link href="/" className="mt-8 bg-accent text-white font-bold px-8 py-3 rounded-lg hover:bg-accent/90 transition-all">
+          Voltar para os Lançamentos
+        </Link>
+      </div>
+    );
+  }
+
+  // --- TELA DE CARREGAMENTO ---
+  if (chatEnabled === null || loading) {
+    return <div className="flex justify-center items-center h-[60vh]"><Loader2 className="animate-spin text-accent" size={40} /></div>;
+  }
+
+  // --- TELA DE CHAT NORMAL ---
   return (
     <div className="w-full max-w-4xl mx-auto py-4 md:py-8 h-[calc(100vh-140px)] flex flex-col">
       <div className="bg-surface border border-border rounded-t-2xl p-4 flex items-center justify-between z-10 shadow-sm">
@@ -116,9 +150,7 @@ export default function ChatPage() {
       </div>
 
       <div className="flex-1 bg-bg border-x border-border overflow-y-auto p-4 flex flex-col gap-4">
-        {loading ? (
-          <div className="flex justify-center items-center h-full"><Loader2 className="animate-spin text-accent" size={32} /></div>
-        ) : messages.length === 0 ? (
+        {messages.length === 0 ? (
           <div className="text-center text-muted my-auto">Nenhuma mensagem ainda. Seja o primeiro a falar!</div>
         ) : (
           messages.map((msg) => {

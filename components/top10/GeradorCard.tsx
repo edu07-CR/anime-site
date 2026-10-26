@@ -2,7 +2,8 @@
 
 import { useRef, useState, useEffect } from 'react';
 import { toPng } from 'html-to-image';
-import { Share2, Loader2 } from 'lucide-react';
+import { Download, Loader2 } from 'lucide-react';
+import { BotaoPostarFeed } from './BotaoPostarFeed';
 
 interface AnimeData {
   id: number;
@@ -14,148 +15,136 @@ interface AnimeData {
 export function GeradorCard({ animes, username }: { animes: AnimeData[], username: string }) {
   const cardRef = useRef<HTMLDivElement>(null);
   const [isGenerating, setIsGenerating] = useState(false);
-  const [imagensProntas, setImagensProntas] = useState(false);
+  const [imagemGerada, setImagemGerada] = useState<string | null>(null);
+  const [imagensBase64, setImagensBase64] = useState<Record<number, string>>({});
 
   useEffect(() => {
-    let carregadas = 0;
-    const total = animes.length;
-    if (total === 0) return;
-
-    animes.forEach((anime) => {
-      const img = new Image();
-      img.src = `/api/proxy-image?url=${encodeURIComponent(anime.coverUrl)}`;
-      img.onload = () => {
-        carregadas++;
-        if (carregadas === total) setImagensProntas(true);
-      };
-      img.onerror = () => {
-        carregadas++;
-        if (carregadas === total) setImagensProntas(true);
-      };
-    });
+    const carregarImagens = async () => {
+      const base64Map: Record<number, string> = {};
+      for (const anime of animes) {
+        try {
+          const proxyUrl = `/api/proxy-image?url=${encodeURIComponent(anime.coverUrl)}`;
+          const response = await fetch(proxyUrl);
+          const blob = await response.blob();
+          const reader = new FileReader();
+          reader.readAsDataURL(blob);
+          await new Promise((resolve) => {
+            reader.onloadend = () => {
+              base64Map[anime.id] = reader.result as string;
+              resolve(null);
+            };
+          });
+        } catch (error) {
+          console.error(`Erro ao carregar imagem do anime ${anime.id}`, error);
+        }
+      }
+      setImagensBase64(base64Map);
+    };
+    if (animes.length > 0) carregarImagens();
   }, [animes]);
 
-  const handleCompartilhar = async () => {
-    if (!cardRef.current) return;
-    setIsGenerating(true);
-
+  const gerarImagem = async () => {
+    if (!cardRef.current) return null;
+    await new Promise(resolve => setTimeout(resolve, 1000));
+    
     try {
-      await new Promise(resolve => setTimeout(resolve, 500));
-
-      const opcoes = {
+      const dataUrl = await toPng(cardRef.current, {
         quality: 1.0,
         pixelRatio: 2,
         backgroundColor: '#0a0a0f',
         width: 1080,
-        height: 1920, 
+        height: 1080, // <-- MUDADO PARA 1080 PARA FICAR QUADRADO
         includeQueryParams: true,
         cacheBust: true,
-        style: { 
-          transform: 'scale(1)', 
-          transformOrigin: 'top left',
-          // Força a fonte a ser aplicada na raiz da captura
-          fontFamily: 'Arial, Helvetica, sans-serif' 
-        }
-      };
-
-      const dataUrl = await toPng(cardRef.current, opcoes);
-
-      const blob = await (await fetch(dataUrl)).blob();
-      const file = new File([blob], `top5-${username}.png`, { type: 'image/png' });
-
-      if (navigator.canShare && navigator.canShare({ files: [file] })) {
-        await navigator.share({ files: [file], title: 'Meu Top 5 Animes', text: 'Olha o meu Top 5 no AniVerse!' });
-      } else {
-        const link = document.createElement('a');
-        link.download = `top5-aniverse-${username}.png`;
-        link.href = dataUrl;
-        link.click();
-      }
+        style: { transform: 'scale(1)', transformOrigin: 'top left' }
+      });
+      setImagemGerada(dataUrl);
+      return dataUrl;
     } catch (error) {
-      console.error("Erro:", error);
-      alert("Ocorreu um erro ao gerar a imagem.");
-    } finally {
-      setIsGenerating(false);
+      console.error("Erro ao gerar imagem:", error);
+      return null;
     }
   };
 
+  const handleDownload = async () => {
+    setIsGenerating(true);
+    const dataUrl = await gerarImagem();
+
+    if (dataUrl) {
+      const link = document.createElement('a');
+      link.download = `top5-aniverse-${username.replace(/\s+/g, '-').toLowerCase()}.png`;
+      link.href = dataUrl;
+      link.click();
+    } else {
+      alert("Erro ao gerar a imagem.");
+    }
+    setIsGenerating(false);
+  };
+
   return (
-    <div className="mt-8 flex flex-col items-center">
-      <button
-        onClick={handleCompartilhar}
-        disabled={isGenerating || animes.length !== 5 || !imagensProntas}
-        className="flex items-center gap-2 bg-accent text-white px-8 py-4 rounded-xl font-bold hover:bg-accent/90 transition-all shadow-lg shadow-accent/20 disabled:opacity-50 cursor-pointer"
-      >
-        {isGenerating ? <Loader2 className="animate-spin" size={20} /> : <Share2 size={20} />}
-        {isGenerating ? 'Gerando Imagem...' : !imagensProntas ? 'Carregando capas...' : 'Baixar Imagem'}
-      </button>
+    <div className="mt-8 flex flex-col items-center w-full">
+      <div className="flex flex-col md:flex-row items-center justify-center gap-4 w-full max-w-md">
+        <button
+          onClick={handleDownload}
+          disabled={isGenerating}
+          className="flex items-center justify-center gap-2 bg-accent text-white px-8 py-4 rounded-xl font-bold hover:bg-accent/90 transition-all shadow-lg shadow-accent/20 disabled:opacity-50 cursor-pointer w-full"
+        >
+          {isGenerating ? <Loader2 className="animate-spin" size={20} /> : <Download size={20} />}
+          {isGenerating ? 'Gerando Imagem...' : 'Baixar Imagem'}
+        </button>
+      </div>
+
+      {imagemGerada && (
+        <BotaoPostarFeed cardImage={imagemGerada} animes={animes} />
+      )}
 
       <div className="fixed top-0 left-0 -z-50 opacity-0 pointer-events-none">
         <div 
           ref={cardRef} 
-          style={{ 
-            width: '1080px', 
-            height: '1920px',
-            fontFamily: 'Arial, Helvetica, sans-serif' // 👈 Forçando fonte local
-          }} 
-          className="bg-[#0a0a0f] p-10 flex flex-col items-center relative overflow-hidden justify-between"
+          style={{ width: '1080px', height: '1080px' }} // <-- MUDADO PARA 1080
+          className="bg-[#0a0a0f] p-12 flex flex-col items-center relative overflow-hidden"
         >
-          <div className="absolute top-0 left-1/2 -translate-x-1/2 w-[800px] h-[800px] bg-[#a855f7]/20 blur-[120px] rounded-full pointer-events-none" />
+          <div className="absolute top-0 left-1/2 -translate-x-1/2 w-[800px] h-[800px] bg-accent/20 blur-[120px] rounded-full pointer-events-none" />
 
-          <div className="flex flex-col items-center z-10 w-full mt-4">
-            <h2 className="text-3xl font-bold mb-2 uppercase tracking-widest text-center" style={{ color: '#a855f7' }}>
+          <div className="flex flex-col items-center mb-6 z-10 w-full">
+            <h2 className="text-3xl text-accent font-bold mb-2 uppercase tracking-widest text-center">
               Meu Top 5 Animes
             </h2>
-            <h1 className="text-5xl font-black text-center w-full" style={{ color: '#ffffff' }}>
+            <h1 className="text-6xl font-black text-white text-center w-full truncate">
               @{username}
             </h1>
           </div>
 
-          <div className="flex flex-col gap-5 w-full z-10 flex-1 justify-center my-6">
-            {animes.map((anime, index) => (
-              <div key={anime.id} className="relative flex items-center bg-[#14141c] rounded-2xl overflow-hidden border border-[#26262f] h-[260px] w-full">
-                <div className="absolute top-3 left-3 w-12 h-12 bg-[#a855f7] text-white text-2xl font-black flex items-center justify-center rounded-xl shadow-lg z-20">
-                  {index + 1}
+          <div className="grid grid-cols-2 gap-4 w-full z-10 flex-1 content-start">
+            {animes.map((anime, index) => {
+              const imagemSrc = imagensBase64[anime.id] || '';
+              return (
+                <div key={anime.id} className={`relative flex flex-col bg-surface rounded-xl overflow-hidden border border-border/50 ${index === 4 ? 'col-span-2 w-1/2 mx-auto' : ''}`}>
+                  <div className="absolute top-2 left-2 w-8 h-8 bg-accent text-white text-lg font-black flex items-center justify-center rounded-lg shadow-lg z-20">
+                    {index + 1}
+                  </div>
+                  <div className="relative w-full aspect-[2/3] bg-[#14141c]">
+                    {imagemSrc ? (
+                      <img src={imagemSrc} alt={anime.title} className="w-full h-full object-cover" />
+                    ) : (
+                      <div className="w-full h-full flex items-center justify-center text-muted text-xs">Carregando...</div>
+                    )}
+                    <div className="absolute inset-0 bg-gradient-to-t from-black/90 via-black/20 to-transparent" />
+                  </div>
+                  <div className="absolute bottom-0 w-full p-2 z-20">
+                    <h3 className="text-white font-bold text-xs line-clamp-2 leading-tight">{anime.title}</h3>
+                  </div>
                 </div>
-
-                <div className="relative w-[180px] h-full bg-[#14141c] shrink-0">
-                  <img 
-                    src={`/api/proxy-image?url=${encodeURIComponent(anime.coverUrl)}`} 
-                    alt={anime.title} 
-                    className="w-full h-full object-cover" 
-                    crossOrigin="anonymous"
-                  />
-                </div>
-
-                <div className="flex-1 p-6 z-20 flex flex-col justify-center h-full">
-                  {/* Forçando cor branca sólida e quebra de linha no estilo inline */}
-                  <h3 
-                    className="text-3xl leading-tight mb-2"
-                    style={{ 
-                      color: '#ffffff',
-                      fontWeight: 'bold',
-                      wordBreak: 'break-word', 
-                      whiteSpace: 'normal',
-                      display: 'block'
-                    }}
-                  >
-                    {anime.title}
-                  </h3>
-                  {/* Forçando cor roxa sólida */}
-                  <p className="text-xl" style={{ color: '#a855f7', fontWeight: 'bold' }}>
-                    Nota: {anime.score}
-                  </p>
-                </div>
-              </div>
-            ))}
+              );
+            })}
           </div>
 
-          <div className="flex items-center gap-3 z-10 mb-4">
-            <div className="flex items-center justify-center w-10 h-10 rounded-full border-4" style={{ borderColor: '#a855f7' }}>
-              <span className="font-black text-xl leading-none mt-1" style={{ color: '#a855f7' }}>A</span>
+          <div className="mt-4 flex items-center gap-3 z-10">
+            <div className="flex items-center justify-center w-8 h-8 rounded-full border-4 border-accent">
+              <span className="text-accent font-black text-lg leading-none mt-1">A</span>
             </div>
-            <span className="text-2xl font-bold tracking-wider" style={{ color: '#ffffff' }}>
-              <span style={{ color: '#a855f7' }}>ANI</span>VERSE
+            <span className="text-xl font-bold tracking-wider text-white">
+              <span className="text-accent">ANI</span>VERSE
             </span>
           </div>
         </div>
