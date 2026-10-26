@@ -5,6 +5,7 @@ import Link from 'next/link';
 import { ShieldAlert, Users, MessageSquare, ArrowLeft, Star } from 'lucide-react';
 import { BotaoNotificar } from '@/components/admin/BotaoNotificar';
 import { ToggleChat } from '@/components/admin/ToggleChat';
+import { ToggleFeed } from '@/components/admin/ToggleFeed';
 
 export const dynamic = 'force-dynamic';
 
@@ -23,9 +24,11 @@ export default async function AdminPage() {
     { auth: { autoRefreshToken: false, persistSession: false } }
   );
 
-  // 1. Busca a configuração do chat
-  const { data: config } = await supabaseAdmin.from('site_config').select('chat_enabled').single();
-  const chatAtivo = config?.chat_enabled || false;
+  // 1. Busca a configuração do site (chat e feed)
+  const { data: config } = await supabaseAdmin.from('site_config').select('chat_enabled, feed_enabled').single();
+  
+  const chatAtivo = config?.chat_enabled ?? true;
+  const feedAtivo = config?.feed_enabled ?? true;
 
   // 2. Busca usuários e estatísticas
   const { data: users } = await supabaseAdmin.from('profiles').select('id, username, avatar_url, created_at').order('created_at', { ascending: false });
@@ -56,16 +59,33 @@ export default async function AdminPage() {
         </Link>
       </div>
 
-      <div className="bg-surface border border-border p-6 rounded-xl mb-8 flex items-center justify-between">
-        <div>
-          <h2 className="text-xl font-bold text-text flex items-center gap-2">
-            {chatAtivo ? '🟢 Chat Liberado' : '🔴 Chat Bloqueado'}
-          </h2>
-          <p className="text-muted text-sm mt-1">
-            {chatAtivo ? 'Os usuários podem enviar mensagens.' : 'Os usuários veem uma tela de manutenção.'}
-          </p>
+      {/* BLOCO DE CONTROLE (CHAT E FEED) */}
+      <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mb-8">
+        {/* BLOCO DO CHAT */}
+        <div className="bg-surface border border-border p-6 rounded-xl flex items-center justify-between">
+          <div>
+            <h2 className="text-xl font-bold text-text flex items-center gap-2">
+              {chatAtivo ? '🟢 Chat Liberado' : '🔴 Chat Bloqueado'}
+            </h2>
+            <p className="text-muted text-sm mt-1">
+              {chatAtivo ? 'Os usuários podem enviar mensagens.' : 'Os usuários veem uma tela de manutenção.'}
+            </p>
+          </div>
+          <ToggleChat inicial={chatAtivo} />
         </div>
-        <ToggleChat inicial={chatAtivo} />
+
+        {/* BLOCO DO FEED */}
+        <div className="bg-surface border border-border p-6 rounded-xl flex items-center justify-between">
+          <div>
+            <h2 className="text-xl font-bold text-text flex items-center gap-2">
+              {feedAtivo ? '🟢 Feed Liberado' : '🔴 Feed Bloqueado'}
+            </h2>
+            <p className="text-muted text-sm mt-1">
+              {feedAtivo ? 'Os usuários podem postar no Feed.' : 'Os usuários veem uma tela de manutenção.'}
+            </p>
+          </div>
+          <ToggleFeed inicial={feedAtivo} />
+        </div>
       </div>
 
       <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-8">

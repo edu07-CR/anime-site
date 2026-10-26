@@ -2,7 +2,6 @@
 
 import { useRef, useState, useEffect } from 'react';
 import { toPng } from 'html-to-image';
-import { Download, Loader2 } from 'lucide-react';
 import { BotaoPostarFeed } from './BotaoPostarFeed';
 
 interface AnimeData {
@@ -12,12 +11,13 @@ interface AnimeData {
   score: string;
 }
 
-export function GeradorCard({ animes, username }: { animes: AnimeData[], username: string }) {
+export function GeradorCard({ animes, username, feedLiberado }: { animes: AnimeData[], username: string, feedLiberado: boolean }) {
   const cardRef = useRef<HTMLDivElement>(null);
-  const [isGenerating, setIsGenerating] = useState(false);
   const [imagemGerada, setImagemGerada] = useState<string | null>(null);
   const [imagensBase64, setImagensBase64] = useState<Record<number, string>>({});
+  const [carregandoImagens, setCarregandoImagens] = useState(true);
 
+  // 1. Carrega as imagens para o formato Base64 (necessário para o html-to-image não bugar)
   useEffect(() => {
     const carregarImagens = async () => {
       const base64Map: Record<number, string> = {};
@@ -39,69 +39,55 @@ export function GeradorCard({ animes, username }: { animes: AnimeData[], usernam
         }
       }
       setImagensBase64(base64Map);
+      setCarregandoImagens(false);
     };
     if (animes.length > 0) carregarImagens();
   }, [animes]);
 
-  const gerarImagem = async () => {
-    if (!cardRef.current) return null;
-    await new Promise(resolve => setTimeout(resolve, 1000));
-    
-    try {
-      const dataUrl = await toPng(cardRef.current, {
-        quality: 1.0,
-        pixelRatio: 2,
-        backgroundColor: '#0a0a0f',
-        width: 1080,
-        height: 1080, // <-- MUDADO PARA 1080 PARA FICAR QUADRADO
-        includeQueryParams: true,
-        cacheBust: true,
-        style: { transform: 'scale(1)', transformOrigin: 'top left' }
-      });
-      setImagemGerada(dataUrl);
-      return dataUrl;
-    } catch (error) {
-      console.error("Erro ao gerar imagem:", error);
-      return null;
-    }
-  };
-
-  const handleDownload = async () => {
-    setIsGenerating(true);
-    const dataUrl = await gerarImagem();
-
-    if (dataUrl) {
-      const link = document.createElement('a');
-      link.download = `top5-aniverse-${username.replace(/\s+/g, '-').toLowerCase()}.png`;
-      link.href = dataUrl;
-      link.click();
-    } else {
-      alert("Erro ao gerar a imagem.");
-    }
-    setIsGenerating(false);
-  };
+  // 2. Gera a imagem automaticamente assim que as imagens base64 estiverem prontas
+  useEffect(() => {
+    const gerarAutomatico = async () => {
+      if (!carregandoImagens && cardRef.current) {
+        // Um pequeno delay para garantir que o React renderizou as imagens na tela
+        await new Promise(resolve => setTimeout(resolve, 500));
+        
+        try {
+          const dataUrl = await toPng(cardRef.current, {
+            quality: 1.0,
+            pixelRatio: 2,
+            backgroundColor: '#0a0a0f',
+            width: 1080,
+            height: 1080,
+            includeQueryParams: true,
+            cacheBust: true,
+            style: { transform: 'scale(1)', transformOrigin: 'top left' }
+          });
+          setImagemGerada(dataUrl);
+        } catch (error) {
+          console.error("Erro ao gerar imagem automaticamente:", error);
+        }
+      }
+    };
+    gerarAutomatico();
+  }, [carregandoImagens]);
 
   return (
     <div className="mt-8 flex flex-col items-center w-full">
-      <div className="flex flex-col md:flex-row items-center justify-center gap-4 w-full max-w-md">
-        <button
-          onClick={handleDownload}
-          disabled={isGenerating}
-          className="flex items-center justify-center gap-2 bg-accent text-white px-8 py-4 rounded-xl font-bold hover:bg-accent/90 transition-all shadow-lg shadow-accent/20 disabled:opacity-50 cursor-pointer w-full"
-        >
-          {isGenerating ? <Loader2 className="animate-spin" size={20} /> : <Download size={20} />}
-          {isGenerating ? 'Gerando Imagem...' : 'Baixar Imagem'}
-        </button>
+      
+      {/* O Botão de Postar aparece aqui. Se a imagem ainda não estiver pronta, ele avisa no próprio botão. */}
+      <div className="w-full max-w-md">
+        <BotaoPostarFeed 
+          cardImage={imagemGerada || ''} 
+          animes={animes} 
+          feedLiberado={feedLiberado} 
+        />
       </div>
 
-      {imagemGerada && (
-        <BotaoPostarFeed cardImage={imagemGerada} animes={animes} />
-      )}
-
+      {/* O Card invisível que é renderizado em off-screen para o html-to-image capturar */}
       <div className="fixed top-0 left-0 -z-50 opacity-0 pointer-events-none">
         <div 
           ref={cardRef} 
-          style={{ width: '1080px', height: '1080px' }} // <-- MUDADO PARA 1080
+          style={{ width: '1080px', height: '1080px' }}
           className="bg-[#0a0a0f] p-12 flex flex-col items-center relative overflow-hidden"
         >
           <div className="absolute top-0 left-1/2 -translate-x-1/2 w-[800px] h-[800px] bg-accent/20 blur-[120px] rounded-full pointer-events-none" />

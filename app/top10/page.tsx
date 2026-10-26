@@ -3,10 +3,9 @@
 import { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import { createClient } from '@/lib/supabase/client';
-import { Search, Loader2, GripVertical, X, Save, Star, Play } from 'lucide-react';
+import { Search, Loader2, GripVertical, X, Save, Star } from 'lucide-react';
+import { GeradorCard } from '@/components/top10/GeradorCard'; // <-- Deixe o VS Code auto-completar essa linha
 import Image from 'next/image';
-import { GeradorCard } from '@/components/top10/GeradorCard';
-import { StoriesPlayer } from '@/components/top10/StoriesPlayer';
 
 import {
   DndContext,
@@ -69,9 +68,9 @@ export default function Top10Page() {
   
   const [userId, setUserId] = useState<string | null>(null);
   const [username, setUsername] = useState<string>('usuario'); 
-  const [avatarUrl, setAvatarUrl] = useState<string>(''); 
   
-  const [showStories, setShowStories] = useState(false);
+  // Novo estado para saber se o feed está bloqueado
+  const [feedLiberado, setFeedLiberado] = useState(true);
 
   const sensors = useSensors(
     useSensor(PointerSensor, { activationConstraint: { distance: 5 } }),
@@ -80,6 +79,13 @@ export default function Top10Page() {
 
   useEffect(() => {
     const init = async () => {
+      // 1. Verifica se o feed está bloqueado no banco
+      const { data: config } = await supabase.from('site_config').select('feed_enabled').single();
+      if (config?.feed_enabled === false) {
+        setFeedLiberado(false);
+      }
+
+      // 2. Autenticação e dados do usuário
       const { data: { user } } = await supabase.auth.getUser();
       
       if (!user) {
@@ -96,8 +102,8 @@ export default function Top10Page() {
         .single();
         
       if (profile?.username) setUsername(profile.username);
-      if (profile?.avatar_url) setAvatarUrl(profile.avatar_url);
 
+      // 3. Busca o Top 10 salvo
       const { data } = await supabase
         .from('user_top10')
         .select('position, anime_id')
@@ -253,17 +259,11 @@ export default function Top10Page() {
 
           {animes.length === 5 && (
             <div className="flex flex-col items-center gap-4 mt-6 w-full max-w-md mx-auto">
-              {/* Botão de Baixar Imagem (vem de dentro do GeradorCard) */}
-              <GeradorCard animes={animes} username={username} />
-
-              {/* Botão de Gerar Short (logo abaixo, com a mesma largura) */}
-              <button
-                onClick={() => setShowStories(true)}
-                className="flex items-center justify-center gap-2 bg-surface text-text border border-border w-full py-4 rounded-xl font-bold hover:border-accent hover:text-accent transition-all cursor-pointer h-[60px]"
-              >
-                <Play size={20} className="text-accent" />
-                Gerar Short (Gravar Tela)
-              </button>
+              <GeradorCard 
+                animes={animes} 
+                username={username} 
+                feedLiberado={feedLiberado} 
+              />
             </div>
           )}
         </div>
@@ -273,15 +273,6 @@ export default function Top10Page() {
           <h2 className="text-xl font-bold text-text mb-2">Seu Top 5 está vazio</h2>
           <p className="text-muted text-sm">Use a barra de busca acima para adicionar seus animes favoritos.</p>
         </div>
-      )}
-
-      {showStories && (
-        <StoriesPlayer 
-          animes={animes} 
-          username={username} 
-          avatarUrl={avatarUrl} 
-          onClose={() => setShowStories(false)} 
-        />
       )}
     </div>
   );

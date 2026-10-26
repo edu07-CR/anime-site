@@ -2,7 +2,7 @@
 
 import { useState, useEffect, useOptimistic, startTransition } from 'react';
 import { createClient } from '@/lib/supabase/client';
-import { Loader2, Sparkles, Heart, MessageCircle, AlertTriangle, X } from 'lucide-react';
+import { Loader2, Sparkles, Heart, MessageCircle, AlertTriangle, X, Lock } from 'lucide-react';
 import Image from 'next/image';
 import Link from 'next/link';
 import { CarrosselImagens } from '@/components/feed/CarrosselImagens';
@@ -28,6 +28,7 @@ interface Post {
 export default function FeedPage() {
   const [posts, setPosts] = useState<Post[]>([]);
   const [loading, setLoading] = useState(true);
+  const [feedBloqueado, setFeedBloqueado] = useState(false); // <-- ESTADO DO BLOQUEIO
   const [imagemAberta, setImagemAberta] = useState<Post | null>(null);
   const [postComentariosAberto, setPostComentariosAberto] = useState<Post | null>(null);
 
@@ -38,9 +39,8 @@ export default function FeedPage() {
     }
     
     if (post.media_urls.length > 1) {
-      // Pega as 5 capas, tira o Card (último) e inverte a ordem
       const capas = post.media_urls.slice(0, -1); 
-      return capas.reverse(); // <-- A MÁGICA DO ENGAJAMENTO ACONTECE AQUI
+      return capas.reverse(); 
     }
     
     return post.media_urls;
@@ -66,7 +66,17 @@ export default function FeedPage() {
   );
 
   useEffect(() => {
-    const fetchPosts = async () => {
+    const checkAndFetch = async () => {
+      // 1. Verifica se o Feed está bloqueado no Admin
+      const { data: config } = await supabase.from('site_config').select('feed_enabled').single();
+      
+      if (config?.feed_enabled === false) {
+        setFeedBloqueado(true);
+        setLoading(false);
+        return; // Para aqui e não carrega os posts
+      }
+
+      // 2. Se não estiver bloqueado, carrega os posts
       const { data: { user } } = await supabase.auth.getUser();
 
       const { data: postsData } = await supabase
@@ -102,7 +112,7 @@ export default function FeedPage() {
       setLoading(false);
     };
 
-    fetchPosts();
+    checkAndFetch();
   }, []);
 
   const handleLike = (post: Post) => {
@@ -121,6 +131,32 @@ export default function FeedPage() {
 
   if (loading) {
     return <div className="flex justify-center items-center h-[50vh]"><Loader2 className="animate-spin text-accent" size={40} /></div>;
+  }
+
+  // TELA DE MANUTENÇÃO SE ESTIVER BLOQUEADO
+  // TELA DE MANUTENÇÃO SE ESTIVER BLOQUEADO (Padrão visual do Chat)
+  if (feedBloqueado) {
+    return (
+      <div className="flex flex-col items-center justify-center min-h-[70vh] text-center px-4">
+        <div className="bg-surface border border-border p-6 rounded-full mb-6">
+          <Lock  size={48} className="text-muted" />
+        </div>
+        
+        <h2 className="text-3xl font-bold text-text mb-4">Feed em Manutenção</h2>
+        
+        <p className="text-muted max-w-md mx-auto mb-8">
+          Estamos organizando a comunidade do AniVerse para você. 
+          O Feed será liberado em breve!
+        </p>
+
+        <Link 
+          href="/lancamentos" 
+          className="bg-accent text-white font-bold px-8 py-3 rounded-lg hover:bg-accent/90 transition-colors shadow-lg shadow-accent/20"
+        >
+          Voltar para os Lançamentos
+        </Link>
+      </div>
+    );
   }
 
   return (
