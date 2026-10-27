@@ -5,7 +5,7 @@ import { useRouter } from 'next/navigation';
 import { createClient } from '@/lib/supabase/client';
 import { Mail, Lock, Loader2, Eye, EyeOff, User, X } from 'lucide-react';
 import { SeletorAvatares } from '@/components/perfil/SelecionarAvatar';
-import Link from 'next/link'; // <-- Importação do Link adicionada
+import Link from 'next/link';
 
 export default function LoginModal() {
   const [isLogin, setIsLogin] = useState(true);
@@ -89,7 +89,7 @@ export default function LoginModal() {
         }
       }
       
-      router.back(); // Fecha o modal e volta para a Home
+      router.back();
       router.refresh();
  
     } catch (err: any) {
@@ -119,13 +119,10 @@ export default function LoginModal() {
   };
 
   return (
-    // O FUNDO DESFOCADO (BLUR) ATRÁS DO MODAL
     <div className="fixed inset-0 z-[100] flex items-center justify-center bg-black/60 backdrop-blur-md p-4">
       
-      {/* O CARD DO MODAL */}
       <div className="w-full max-w-md bg-surface/95 border border-border rounded-2xl p-8 shadow-2xl relative max-h-[90vh] overflow-y-auto">
         
-        {/* Botão de Fechar (X) */}
         <button 
           onClick={() => router.back()} 
           className="absolute top-4 right-4 text-muted hover:text-red-400 transition-colors cursor-pointer z-10"
@@ -178,14 +175,10 @@ export default function LoginModal() {
             </button>
           </div>
 
-          {/* LINK DE ESQUECEU A SENHA - SÓ APARECE NO LOGIN */}
           {isLogin && (
             <div className="flex justify-end mt-[-8px]">
-              <Link 
-                href="/esqueceu-senha" 
-                onClick={() => router.back()} // Fecha o modal antes de ir para a página
-                className="text-sm text-accent hover:underline"
-              >
+              {/* Link direto, sem o router.back() que bloqueava a navegação */}
+              <Link href="/esqueceu-senha" className="text-sm text-accent hover:underline">
                 Esqueceu a senha?
               </Link>
             </div>

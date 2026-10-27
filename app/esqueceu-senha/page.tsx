@@ -19,8 +19,11 @@ export default function EsqueceuSenhaPage() {
     setMensagem('');
     setErro('');
 
-    // A URL de redirecionamento é para onde o usuário vai após clicar no link do e-mail
-    const redirectUrl = `${window.location.origin}/redefinir-senha`;
+    // Garante que a URL será a correta (localhost ou produção)
+    const origin = window.location.origin;
+    const isLocalhost = origin.includes('localhost');
+    const baseUrl = isLocalhost ? origin : 'https://anime-site-2dhx.vercel.app';
+    const redirectUrl = `${baseUrl}/redefinir-senha`;
 
     const { error } = await supabase.auth.resetPasswordForEmail(email, {
       redirectTo: redirectUrl,
