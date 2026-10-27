@@ -5,11 +5,12 @@ import Link from 'next/link';
 import Image from 'next/image';
 import { usePathname, useRouter } from 'next/navigation';
 import { createPortal } from 'react-dom';
-import { CalendarDays, Trophy, User, LogOut, Compass, MessageCircle, LayoutGrid } from 'lucide-react';
+import { CalendarDays, Trophy, User, LogOut, Compass, MessageCircle, LayoutGrid, Search } from 'lucide-react';
 import { createClient } from '@/lib/supabase/client';
 import { User as SupabaseUser } from '@supabase/supabase-js';
 import { ThemeToggle } from './ThemeToggle';
 import { Notificacoes } from './Notificacoes';
+import { BuscaGlobal } from './BuscaGlobal';
 
 const navItems = [
   { name: 'Lançamentos', href: '/', icon: CalendarDays },
@@ -47,7 +48,6 @@ export function Navbar() {
         const { data } = await supabase.from('profiles').select('username, avatar_url').eq('id', user.id).single();
         if (data) { setUsername(data.username || 'Perfil'); setAvatarUrl(data.avatar_url || ''); }
 
-        // Função para buscar a contagem
         const fetchUnread = async () => {
           const { count } = await supabase
             .from('direct_messages')
@@ -57,16 +57,15 @@ export function Navbar() {
           setUnreadCount(count || 0);
         };
 
-        fetchUnread(); // Busca inicial
+        fetchUnread();
 
-        // Configura o Realtime
         channel = supabase
           .channel('navbar-mensagens')
           .on(
             'postgres_changes',
             { event: '*', schema: 'public', table: 'direct_messages' },
             () => {
-              fetchUnread(); // Recalcula a contagem a cada mudança
+              fetchUnread();
             }
           )
           .subscribe();
@@ -121,7 +120,6 @@ export function Navbar() {
                 <Icon size={18} />
                 <span className="hidden lg:block">{item.name}</span>
                 
-                {/* BOLINHA DE MENSAGENS NÃO LIDAS */}
                 {item.name === 'Mensagens' && unreadCount > 0 && (
                   <span className="absolute -top-1 -right-1 bg-red-500 text-white text-[10px] font-bold px-1.5 py-0.5 rounded-full min-w-[18px] text-center">
                     {unreadCount}
@@ -130,6 +128,10 @@ export function Navbar() {
               </Link>
             );
           })}
+          
+          <div className="mx-2">
+            <BuscaGlobal /> {/* Busca Global no Desktop */}
+          </div>
           
           <div className="mx-2">
             <ThemeToggle />
@@ -186,7 +188,6 @@ export function Navbar() {
               <Icon size={20} className={isActive ? 'stroke-[2.5px]' : 'stroke-2'} />
               <span className="text-[9px] font-medium">{item.name}</span>
 
-              {/* BOLINHA DE MENSAGENS NO MOBILE */}
               {item.name === 'Mensagens' && unreadCount > 0 && (
                 <span className="absolute top-2 right-3 bg-red-500 text-white text-[9px] font-bold px-1.5 py-0.5 rounded-full">
                   {unreadCount}
@@ -196,6 +197,11 @@ export function Navbar() {
           );
         })}
         
+        {/* Busca Global no Mobile (ícone de lupa) */}
+        <div className="flex items-center justify-center w-full h-full">
+          <BuscaGlobal />
+        </div>
+
         <div className="flex items-center justify-center w-full h-full">
           <ThemeToggle />
         </div>
