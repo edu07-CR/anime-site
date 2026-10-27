@@ -4,6 +4,7 @@ import { useEffect, useState, useRef } from 'react';
 import Link from 'next/link';
 import Image from 'next/image';
 import { usePathname, useRouter } from 'next/navigation';
+import { createPortal } from 'react-dom'; // <-- IMPORTANTE: IMPORT DO PORTAL
 import { CalendarDays, Trophy, User, LogOut, Compass, MessageSquare, LayoutGrid } from 'lucide-react';
 import { createClient } from '@/lib/supabase/client';
 import { User as SupabaseUser } from '@supabase/supabase-js';
@@ -27,8 +28,14 @@ export function Navbar() {
   const [username, setUsername] = useState<string>('');
   const [avatarUrl, setAvatarUrl] = useState<string>('');
   const [isMenuOpen, setIsMenuOpen] = useState(false);
+  const [mounted, setMounted] = useState(false); // Para evitar erro de SSR com o Portal
   
   const menuRef = useRef<HTMLDivElement>(null);
+
+  // Garante que o Portal só rode no cliente
+  useEffect(() => {
+    setMounted(true);
+  }, []);
 
   useEffect(() => {
     const getUser = async () => {
@@ -62,12 +69,39 @@ export function Navbar() {
     router.refresh();
   };
 
-  // Função para parar a propagação do clique e evitar "clique fantasma"
-  const handleMenuClick = (e: React.MouseEvent, action?: () => void) => {
-    e.preventDefault();
-    e.stopPropagation();
-    if (action) action();
-  };
+  // COMPONENTE INTERNO DO MENU QUE VAI PARA O PORTAL
+  const MenuContent = () => (
+    <div className="fixed inset-0 z-[9999] flex items-end justify-end p-4 pointer-events-none">
+      {/* O Fundo escuro (click fora) */}
+      <div 
+        className="absolute inset-0 bg-black/50 pointer-events-auto" 
+        onClick={() => setIsMenuOpen(false)}
+        onPointerDown={(e) => e.stopPropagation()} 
+      />
+      
+      {/* O Menu em si */}
+      <div 
+        className="relative w-48 bg-surface border border-border rounded-lg shadow-2xl py-2 flex flex-col pointer-events-auto mb-16 mr-2"
+        ref={menuRef}
+        onPointerDown={(e) => e.stopPropagation()}
+      >
+        <Link 
+          href="/perfil" 
+          onClick={(e) => { e.stopPropagation(); setIsMenuOpen(false); }} 
+          className="px-4 py-3 text-sm text-text hover:bg-bg transition-colors cursor-pointer"
+        >
+          Ver meu perfil
+        </Link>
+        <div className="h-[1px] bg-border my-1" />
+        <button 
+          onClick={(e) => { e.stopPropagation(); handleLogout(); }} 
+          className="px-4 py-3 text-sm text-red-500 hover:bg-red-500/10 transition-colors flex items-center gap-2 text-left w-full cursor-pointer"
+        >
+          <LogOut size={16} /> Sair da conta
+        </button>
+      </div>
+    </div>
+  );
 
   return (
     <>
@@ -107,7 +141,7 @@ export function Navbar() {
           
           <Notificacoes />
 
-          <div className="relative" ref={menuRef}>
+          <div className="relative">
             <button
               onClick={(e) => { e.stopPropagation(); setIsMenuOpen(!isMenuOpen); }}
               className={`flex items-center gap-2 px-2 py-1.5 rounded-full border transition-colors cursor-pointer ${
@@ -136,22 +170,6 @@ export function Navbar() {
                 </>
               )}
             </button>
-
-            {user && isMenuOpen && (
-              <div className="absolute right-0 top-full mt-2 w-48 bg-surface border border-border rounded-lg shadow-xl py-2 flex flex-col z-50">
-                <Link href="/perfil" onClick={() => setIsMenuOpen(false)} className="px-4 py-2 text-sm text-text hover:bg-bg transition-colors cursor-pointer">
-                  Ver meu perfil
-                </Link>
-                <div className="h-[1px] bg-border my-1" />
-                <button onClick={handleLogout} className="px-4 py-2 text-sm text-red-500 hover:bg-red-500/10 transition-colors flex items-center gap-2 text-left w-full cursor-pointer">
-                  <LogOut size={16} /> Sair da conta
-                </button>
-              </div>
-            )}
-            
-            {!user && (
-              <Link href="/login" className="absolute inset-0 w-full h-full opacity-0 cursor-pointer" />
-            )}
           </div>
         </nav>
       </header>
@@ -210,40 +228,13 @@ export function Navbar() {
               <span className="text-[9px] font-medium">Entrar</span>
             </Link>
           )}
-
-          {user && isMenuOpen && (
-            <div 
-              className="absolute bottom-full mb-3 right-0 w-48 bg-surface border border-border rounded-lg shadow-2xl py-2 flex flex-col z-[999]"
-              // Adicionado para evitar que o toque passe para o card atrás
-              onPointerDown={(e) => e.stopPropagation()} 
-            >
-              {/* Alterado para usar a função handleMenuClick */}
-              <Link 
-                href="/perfil" 
-                onClick={(e) => handleMenuClick(e, () => setIsMenuOpen(false))} 
-                className="px-4 py-3 text-sm text-text hover:bg-bg transition-colors cursor-pointer block w-full text-left"
-              >
-                Ver meu perfil
-              </Link>
-              <div className="h-[1px] bg-border my-1" />
-              <button 
-                onClick={(e) => handleMenuClick(e, handleLogout)} 
-                className="px-4 py-3 text-sm text-red-500 hover:bg-red-500/10 transition-colors flex items-center gap-2 text-left w-full cursor-pointer"
-              >
-                <LogOut size={16} /> Sair da conta
-              </button>
-            </div>
-          )}
         </div>
       </nav>
-      
-      {/* OVERLAY ATUALIZADO: Z-INDEX MAIOR QUE O CONTEÚDO, MAS MENOR QUE A NAVBAR */}
-      {isMenuOpen && (
-        <div 
-          className="md:hidden fixed inset-0 bg-black/50 z-[800]" 
-          onClick={() => setIsMenuOpen(false)}
-          onTouchStart={(e) => e.stopPropagation()} // Impede que o toque passe para o card
-        />
+
+      {/* RENDERIZAÇÃO DO MENU VIA PORTAL (MÁGICA ACONTECE AQUI) */}
+      {isMenuOpen && mounted && createPortal(
+        <MenuContent />,
+        document.body
       )}
     </>
   );
