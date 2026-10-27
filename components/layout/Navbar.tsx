@@ -48,11 +48,17 @@ export function Navbar() {
   }, [supabase.auth]);
 
   useEffect(() => {
-    function handleClickOutside(event: MouseEvent) {
+    // Usando PointerEvent para resolver o erro de TypeScript no VS Code
+    function handleClickOutside(event: PointerEvent) {
       if (menuRef.current && !menuRef.current.contains(event.target as Node)) setIsMenuOpen(false);
     }
-    document.addEventListener("mousedown", handleClickOutside);
-    return () => document.removeEventListener("mousedown", handleClickOutside);
+    
+    // 'pointerdown' substitui o mousedown e o touchstart de forma universal
+    document.addEventListener("pointerdown", handleClickOutside);
+    
+    return () => {
+      document.removeEventListener("pointerdown", handleClickOutside);
+    };
   }, []);
 
   const handleLogout = async () => {
@@ -101,7 +107,7 @@ export function Navbar() {
 
           <div className="relative" ref={menuRef}>
             <button
-              onClick={() => setIsMenuOpen(!isMenuOpen)}
+              onClick={(e) => { e.stopPropagation(); setIsMenuOpen(!isMenuOpen); }}
               className={`flex items-center gap-2 px-2 py-1.5 rounded-full border transition-colors cursor-pointer ${
                 pathname === '/perfil' || isMenuOpen 
                   ? 'bg-accent/10 border-accent text-accent' 
@@ -149,7 +155,7 @@ export function Navbar() {
       </header>
 
       {/* MOBILE */}
-      <nav className="md:hidden fixed bottom-0 left-0 right-0 z-[60] h-16 bg-surface/90 backdrop-blur-lg border-t border-border flex items-center justify-around pb-safe transition-colors duration-300">
+      <nav className="md:hidden fixed bottom-0 left-0 right-0 z-[70] h-16 bg-surface/90 backdrop-blur-lg border-t border-border flex items-center justify-around pb-safe transition-colors duration-300">
         {navItems.map((item) => {
           const isActive = pathname === item.href;
           const Icon = item.icon;
@@ -174,7 +180,7 @@ export function Navbar() {
         <div className="relative w-full h-full flex items-center justify-center">
           {user ? (
             <button
-              onClick={() => setIsMenuOpen(!isMenuOpen)}
+              onClick={(e) => { e.stopPropagation(); setIsMenuOpen(!isMenuOpen); }}
               className={`flex flex-col items-center justify-center w-full h-full gap-1 transition-colors cursor-pointer ${
                 pathname === '/perfil' || isMenuOpen ? 'text-accent' : 'text-muted hover:text-text'
               }`}
@@ -203,7 +209,7 @@ export function Navbar() {
           )}
 
           {user && isMenuOpen && (
-            <div className="absolute bottom-full mb-3 right-0 w-48 bg-surface border border-border rounded-lg shadow-2xl py-2 flex flex-col z-[70]">
+            <div className="absolute bottom-full mb-3 right-0 w-48 bg-surface border border-border rounded-lg shadow-2xl py-2 flex flex-col z-[80]">
               <Link href="/perfil" onClick={() => setIsMenuOpen(false)} className="px-4 py-3 text-sm text-text hover:bg-bg transition-colors cursor-pointer">
                 Ver meu perfil
               </Link>
@@ -216,8 +222,9 @@ export function Navbar() {
         </div>
       </nav>
       
+      {/* OVERLAY PARA FECHAR O MENU (Z-INDEX MENOR QUE A BARRA) */}
       {isMenuOpen && (
-        <div className="md:hidden fixed inset-0 bg-black/50 z-50" onClick={() => setIsMenuOpen(false)} />
+        <div className="md:hidden fixed inset-0 bg-black/50 z-[60]" onClick={() => setIsMenuOpen(false)} />
       )}
     </>
   );
