@@ -48,17 +48,11 @@ export function Navbar() {
   }, [supabase.auth]);
 
   useEffect(() => {
-    // Usando PointerEvent para resolver o erro de TypeScript no VS Code
     function handleClickOutside(event: PointerEvent) {
       if (menuRef.current && !menuRef.current.contains(event.target as Node)) setIsMenuOpen(false);
     }
-    
-    // 'pointerdown' substitui o mousedown e o touchstart de forma universal
     document.addEventListener("pointerdown", handleClickOutside);
-    
-    return () => {
-      document.removeEventListener("pointerdown", handleClickOutside);
-    };
+    return () => document.removeEventListener("pointerdown", handleClickOutside);
   }, []);
 
   const handleLogout = async () => {
@@ -68,10 +62,18 @@ export function Navbar() {
     router.refresh();
   };
 
+  // Função para parar a propagação do clique e evitar "clique fantasma"
+  const handleMenuClick = (e: React.MouseEvent, action?: () => void) => {
+    e.preventDefault();
+    e.stopPropagation();
+    if (action) action();
+  };
+
   return (
     <>
       {/* DESKTOP */}
       <header className="hidden md:flex sticky top-0 z-50 w-full h-16 bg-surface/80 backdrop-blur-md border-b border-border items-center justify-between px-6 transition-colors duration-300">
+        {/* ... código do desktop igual ... */}
         <Link href="/" className="flex items-center gap-2 group cursor-pointer">
           <div className="flex items-center justify-center w-8 h-8 rounded-full border-2 border-accent group-hover:bg-accent/10 transition-colors">
             <span className="text-accent font-black text-lg leading-none mt-[1px]">A</span>
@@ -155,7 +157,8 @@ export function Navbar() {
       </header>
 
       {/* MOBILE */}
-      <nav className="md:hidden fixed bottom-0 left-0 right-0 z-[70] h-16 bg-surface/90 backdrop-blur-lg border-t border-border flex items-center justify-around pb-safe transition-colors duration-300">
+      <nav className="md:hidden fixed bottom-0 left-0 right-0 z-[900] h-16 bg-surface/90 backdrop-blur-lg border-t border-border flex items-center justify-around pb-safe transition-colors duration-300">
+        {/* ... nav items ... */}
         {navItems.map((item) => {
           const isActive = pathname === item.href;
           const Icon = item.icon;
@@ -209,12 +212,24 @@ export function Navbar() {
           )}
 
           {user && isMenuOpen && (
-            <div className="absolute bottom-full mb-3 right-0 w-48 bg-surface border border-border rounded-lg shadow-2xl py-2 flex flex-col z-[80]">
-              <Link href="/perfil" onClick={() => setIsMenuOpen(false)} className="px-4 py-3 text-sm text-text hover:bg-bg transition-colors cursor-pointer">
+            <div 
+              className="absolute bottom-full mb-3 right-0 w-48 bg-surface border border-border rounded-lg shadow-2xl py-2 flex flex-col z-[999]"
+              // Adicionado para evitar que o toque passe para o card atrás
+              onPointerDown={(e) => e.stopPropagation()} 
+            >
+              {/* Alterado para usar a função handleMenuClick */}
+              <Link 
+                href="/perfil" 
+                onClick={(e) => handleMenuClick(e, () => setIsMenuOpen(false))} 
+                className="px-4 py-3 text-sm text-text hover:bg-bg transition-colors cursor-pointer block w-full text-left"
+              >
                 Ver meu perfil
               </Link>
               <div className="h-[1px] bg-border my-1" />
-              <button onClick={handleLogout} className="px-4 py-3 text-sm text-red-500 hover:bg-red-500/10 transition-colors flex items-center gap-2 text-left w-full cursor-pointer">
+              <button 
+                onClick={(e) => handleMenuClick(e, handleLogout)} 
+                className="px-4 py-3 text-sm text-red-500 hover:bg-red-500/10 transition-colors flex items-center gap-2 text-left w-full cursor-pointer"
+              >
                 <LogOut size={16} /> Sair da conta
               </button>
             </div>
@@ -222,9 +237,13 @@ export function Navbar() {
         </div>
       </nav>
       
-      {/* OVERLAY PARA FECHAR O MENU (Z-INDEX MENOR QUE A BARRA) */}
+      {/* OVERLAY ATUALIZADO: Z-INDEX MAIOR QUE O CONTEÚDO, MAS MENOR QUE A NAVBAR */}
       {isMenuOpen && (
-        <div className="md:hidden fixed inset-0 bg-black/50 z-[60]" onClick={() => setIsMenuOpen(false)} />
+        <div 
+          className="md:hidden fixed inset-0 bg-black/50 z-[800]" 
+          onClick={() => setIsMenuOpen(false)}
+          onTouchStart={(e) => e.stopPropagation()} // Impede que o toque passe para o card
+        />
       )}
     </>
   );
