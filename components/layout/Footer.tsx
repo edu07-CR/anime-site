@@ -9,6 +9,7 @@ export function Footer() {
         <div className="flex items-center gap-4">
           <Link href="/termos" className="hover:text-accent transition-colors">Termos de Uso</Link>
           <Link href="/privacidade" className="hover:text-accent transition-colors">Política de Privacidade</Link>
+          <Link href="/exclusao-de-dados" className="hover:text-accent transition-colors">Exclusão de Dados</Link>
         </div>
       </div>
     </footer>
