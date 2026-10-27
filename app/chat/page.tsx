@@ -2,214 +2,173 @@
 
 import { useState, useEffect, useRef } from 'react';
 import { createClient } from '@/lib/supabase/client';
-import { Send, Loader2, MessageSquare, ArrowLeft, Trash2, Lock } from 'lucide-react';
+import { Loader2, Send, Lock } from 'lucide-react';
+import { formatDistanceToNow } from 'date-fns';
+import { ptBR } from 'date-fns/locale';
 import Image from 'next/image';
 import Link from 'next/link';
+import { SeloAdmin } from '@/components/layout/SeloAdmin'; // <-- IMPORT DO SELO
 
-const supabase = createClient();
-
-interface Message {
+interface Mensagem {
   id: string;
   content: string;
   created_at: string;
   user_id: string;
-  profiles: { username: string; avatar_url: string };
+  profiles: {
+    username: string;
+    avatar_url: string;
+    is_admin: boolean; // <-- is_admin
+  };
 }
 
 export default function ChatPage() {
-  const [messages, setMessages] = useState<Message[]>([]);
-  const [newMessage, setNewMessage] = useState('');
+  const [mensagens, setMensagens] = useState<Mensagem[]>([]);
+  const [novaMensagem, setNovaMensagem] = useState('');
   const [loading, setLoading] = useState(true);
+  const [bloqueado, setBloqueado] = useState(false);
   const [userId, setUserId] = useState<string | null>(null);
-  const [chatEnabled, setChatEnabled] = useState<boolean | null>(null);
   
-  const messagesEndRef = useRef<HTMLDivElement>(null);
-
-  const scrollToBottom = () => {
-    messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
-  };
+  const bottomRef = useRef<HTMLDivElement>(null);
+  const supabase = createClient();
 
   useEffect(() => {
     const init = async () => {
-      // 1. Verifica se o chat está bloqueado ou liberado
+      // Verifica bloqueio
       const { data: config } = await supabase.from('site_config').select('chat_enabled').single();
-      setChatEnabled(config?.chat_enabled ?? false);
-
-      if (!config?.chat_enabled) {
+      if (config?.chat_enabled === false) {
+        setBloqueado(true);
         setLoading(false);
-        return; // Se estiver bloqueado, nem tenta carregar as mensagens
+        return;
       }
 
-      // 2. Pega o usuário logado
       const { data: { user } } = await supabase.auth.getUser();
       if (user) setUserId(user.id);
 
-      // 3. Busca mensagens antigas
-      const { data: oldMessages } = await supabase
+      // Busca mensagens iniciais
+      const { data } = await supabase
         .from('chat_messages')
-        .select(`id, content, created_at, user_id, profiles (username, avatar_url)`)
+        .select(`id, content, created_at, user_id, profiles (username, avatar_url, is_admin)`)
         .order('created_at', { ascending: true })
         .limit(50);
 
-      if (oldMessages) setMessages(oldMessages as any);
+      if (data) setMensagens(data as unknown as Mensagem[]);
       setLoading(false);
-      setTimeout(scrollToBottom, 100);
-
-      // 4. Configura o Realtime
-      const channel = supabase.channel(`chat-${Math.random()}`);
-
-      channel.on(
-        'postgres_changes',
-        { event: 'INSERT', schema: 'public', table: 'chat_messages' },
-        (payload) => {
-          supabase
-            .from('profiles')
-            .select('username, avatar_url')
-            .eq('id', payload.new.user_id)
-            .single()
-            .then(({ data: profile }) => {
-              const newMsg = {
-                id: payload.new.id,
-                content: payload.new.content,
-                created_at: payload.new.created_at,
-                user_id: payload.new.user_id,
-                profiles: profile || { username: 'Usuário', avatar_url: '' }
-              } as Message;
-
-              setMessages((prev) => {
-                if (prev.some(m => m.id === newMsg.id)) return prev;
-                return [...prev, newMsg];
-              });
-              setTimeout(scrollToBottom, 100);
-            });
-        }
-      );
-
-      channel.subscribe();
-
-      return () => { supabase.removeChannel(channel); };
     };
 
     init();
-  }, []);
 
-  const sendMessage = async (e: React.FormEvent) => {
+    // Realtime
+    const channel = supabase
+      .channel('chat-realtime')
+      .on(
+        'postgres_changes',
+        { event: 'INSERT', schema: 'public', table: 'chat_messages' },
+        async (payload) => {
+          // Quando chega uma nova, busca os dados do perfil dela
+          const { data } = await supabase
+            .from('chat_messages')
+            .select(`id, content, created_at, user_id, profiles (username, avatar_url, is_admin)`)
+            .eq('id', payload.new.id)
+            .single();
+            
+          if (data) {
+            setMensagens((prev) => [...prev, data as unknown as Mensagem]);
+          }
+        }
+      )
+      .subscribe();
+
+    return () => { supabase.removeChannel(channel); };
+  }, [supabase]);
+
+  useEffect(() => {
+    // Auto-scroll para o final
+    bottomRef.current?.scrollIntoView({ behavior: 'smooth' });
+  }, [mensagens]);
+
+  const handleEnviar = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!newMessage.trim() || !userId) return;
-    
-    const content = newMessage.trim();
-    setNewMessage(''); 
-    
-    await supabase.from('chat_messages').insert({ user_id: userId, content: content });
+    if (!novaMensagem.trim() || !userId) return;
+
+    const msg = novaMensagem;
+    setNovaMensagem('');
+
+    await supabase.from('chat_messages').insert({
+      user_id: userId,
+      content: msg
+    });
   };
 
-  const deleteMessage = async (id: string) => {
-    await supabase.from('chat_messages').delete().eq('id', id);
-    setMessages((prev) => prev.filter(m => m.id !== id));
-  };
+  if (loading) {
+    return <div className="flex justify-center items-center h-[50vh]"><Loader2 className="animate-spin text-accent" size={40} /></div>;
+  }
 
-  // --- TELA DE CHAT BLOQUEADO ---
-  if (chatEnabled === false) {
+  if (bloqueado) {
     return (
-      <div className="flex flex-col items-center justify-center min-h-[60vh] text-center px-4">
-        <div className="w-20 h-20 bg-surface border border-border rounded-full flex items-center justify-center mb-6">
-          <Lock size={40} className="text-muted" />
+      <div className="flex flex-col items-center justify-center min-h-[70vh] text-center px-4">
+        <div className="bg-surface border border-border p-6 rounded-full mb-6">
+          <Lock size={48} className="text-muted" />
         </div>
-        <h1 className="text-3xl font-bold text-text mb-2">Chat em Manutenção</h1>
-        <p className="text-muted max-w-md">
-          Estamos preparando a comunidade do AniVerse para você. O chat será liberado em breve!
-        </p>
-        <Link href="/" className="mt-8 bg-accent text-white font-bold px-8 py-3 rounded-lg hover:bg-accent/90 transition-all">
+        <h2 className="text-3xl font-bold text-text mb-4">Chat em Manutenção</h2>
+        <p className="text-muted max-w-md mx-auto mb-8">Estamos preparando a comunidade do AniVerse para você. O chat será liberado em breve!</p>
+        <Link href="/lancamentos" className="bg-accent text-white font-bold px-8 py-3 rounded-lg hover:bg-accent/90 transition-colors shadow-lg shadow-accent/20">
           Voltar para os Lançamentos
         </Link>
       </div>
     );
   }
 
-  // --- TELA DE CARREGAMENTO ---
-  if (chatEnabled === null || loading) {
-    return <div className="flex justify-center items-center h-[60vh]"><Loader2 className="animate-spin text-accent" size={40} /></div>;
-  }
-
-  // --- TELA DE CHAT NORMAL ---
   return (
-    <div className="w-full max-w-4xl mx-auto py-4 md:py-8 h-[calc(100vh-140px)] flex flex-col">
-      <div className="bg-surface border border-border rounded-t-2xl p-4 flex items-center justify-between z-10 shadow-sm">
-        <div className="flex items-center gap-3">
-          <div className="w-10 h-10 bg-accent/10 rounded-full flex items-center justify-center text-accent">
-            <MessageSquare size={20} />
-          </div>
-          <div>
-            <h1 className="text-xl font-bold text-text">Chat da Comunidade</h1>
-            <p className="text-xs text-muted">Converse em tempo real. As mensagens são apagadas após 24h.</p>
-          </div>
+    <div className="w-full max-w-3xl mx-auto py-8 flex flex-col h-[85vh]">
+      <div className="bg-surface border border-border rounded-2xl flex flex-col flex-1 overflow-hidden shadow-lg">
+        
+        <div className="p-4 border-b border-border bg-bg/50 flex items-center justify-between">
+          <h1 className="text-xl font-bold text-text">Chat da Comunidade</h1>
         </div>
-        <Link href="/" className="text-sm text-accent hover:underline flex items-center gap-1">
-          <ArrowLeft size={16} /> Voltar
-        </Link>
-      </div>
 
-      <div className="flex-1 bg-bg border-x border-border overflow-y-auto p-4 flex flex-col gap-4">
-        {messages.length === 0 ? (
-          <div className="text-center text-muted my-auto">Nenhuma mensagem ainda. Seja o primeiro a falar!</div>
-        ) : (
-          messages.map((msg) => {
+        <div className="flex-1 overflow-y-auto p-4 space-y-4">
+          {mensagens.map((msg) => {
             const isMe = msg.user_id === userId;
             return (
               <div key={msg.id} className={`flex gap-3 ${isMe ? 'flex-row-reverse' : ''}`}>
-                <div className="relative w-8 h-8 rounded-full overflow-hidden flex-shrink-0 bg-border">
+                <div className="relative w-8 h-8 rounded-full overflow-hidden bg-border shrink-0">
                   {msg.profiles?.avatar_url ? (
-                    <Image src={msg.profiles.avatar_url} alt="Avatar" fill sizes="32px" className="object-cover" />
+                    <Image src={msg.profiles.avatar_url} alt="Avatar" fill className="object-cover" />
                   ) : (
-                    <div className="w-full h-full flex items-center justify-center text-xs font-bold text-muted">
-                      {msg.profiles?.username?.charAt(0).toUpperCase() || '?'}
-                    </div>
+                    <div className="w-full h-full flex items-center justify-center text-xs font-bold">{msg.profiles?.username?.charAt(0).toUpperCase()}</div>
                   )}
                 </div>
-                <div className={`flex flex-col max-w-[75%] ${isMe ? 'items-end' : 'items-start'}`}>
-                  <span className="text-[10px] text-muted mb-1 px-1">{msg.profiles?.username || 'Usuário'}</span>
-                  <div className="flex items-center gap-2 group">
-                    {isMe && (
-                      <button onClick={() => deleteMessage(msg.id)} className="opacity-0 group-hover:opacity-100 text-red-500 hover:text-red-400 transition-opacity cursor-pointer">
-                        <Trash2 size={14} />
-                      </button>
-                    )}
-                    <div className={`px-4 py-2 rounded-2xl text-sm ${
-                      isMe ? 'bg-accent text-white rounded-tr-sm' : 'bg-surface border border-border text-text rounded-tl-sm'
-                    }`}>
-                      {msg.content}
-                    </div>
+                <div className={`flex flex-col ${isMe ? 'items-end' : 'items-start'} max-w-[80%]`}>
+                  <div className="flex items-center gap-1.5 mb-1">
+                    <span className="text-xs font-bold text-muted">{msg.profiles?.username}</span>
+                    {msg.profiles?.is_admin && <SeloAdmin />} {/* <-- SELO AQUI */}
                   </div>
-                  <span className="text-[9px] text-muted mt-1 px-1">
-                    {new Date(msg.created_at).toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' })}
+                  <div className={`p-3 rounded-2xl text-sm ${isMe ? 'bg-accent text-white rounded-tr-sm' : 'bg-bg text-text rounded-tl-sm border border-border'}`}>
+                    {msg.content}
+                  </div>
+                  <span className="text-[10px] text-muted mt-1 px-1">
+                    {formatDistanceToNow(new Date(msg.created_at), { addSuffix: true, locale: ptBR })}
                   </span>
                 </div>
               </div>
             );
-          })
-        )}
-        <div ref={messagesEndRef} />
-      </div>
+          })}
+          <div ref={bottomRef} />
+        </div>
 
-      <div className="bg-surface border border-border rounded-b-2xl p-4">
-        {userId ? (
-          <form onSubmit={sendMessage} className="flex gap-2">
-            <input
-              type="text"
-              value={newMessage}
-              onChange={(e) => setNewMessage(e.target.value)}
-              placeholder="Digite sua mensagem..."
-              className="flex-1 bg-bg border border-border text-text rounded-xl py-3 px-4 focus:outline-none focus:border-accent transition-colors"
-            />
-            <button type="submit" disabled={!newMessage.trim()} className="bg-accent text-white p-3 rounded-xl hover:bg-accent/90 transition-colors disabled:opacity-50 cursor-pointer">
-              <Send size={20} />
-            </button>
-          </form>
-        ) : (
-          <div className="text-center text-muted text-sm py-2">
-            <Link href="/login" className="text-accent font-bold hover:underline">Faça login</Link> para participar do chat.
-          </div>
-        )}
+        <form onSubmit={handleEnviar} className="p-3 border-t border-border bg-surface flex gap-2">
+          <input
+            type="text"
+            value={novaMensagem}
+            onChange={(e) => setNovaMensagem(e.target.value)}
+            placeholder="Digite sua mensagem..."
+            className="flex-1 bg-bg border border-border rounded-xl px-4 py-3 text-sm text-text focus:outline-none focus:border-accent transition-colors"
+          />
+          <button type="submit" disabled={!novaMensagem.trim()} className="bg-accent text-white p-3 rounded-xl disabled:opacity-50 hover:bg-accent/90 transition-colors cursor-pointer">
+            <Send size={20} />
+          </button>
+        </form>
+
       </div>
     </div>
   );
