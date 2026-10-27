@@ -2,18 +2,20 @@
 
 import { useState, useEffect, useOptimistic, startTransition } from 'react';
 import { createClient } from '@/lib/supabase/client';
-import { Loader2, Sparkles, Heart, MessageCircle, AlertTriangle, X } from 'lucide-react';
+import { Loader2, Sparkles, Heart, MessageCircle, AlertTriangle, X, Trash2, Lock } from 'lucide-react';
 import Image from 'next/image';
 import Link from 'next/link';
 import { CarrosselImagens } from '@/components/feed/CarrosselImagens';
 import { ModalComentarios } from '@/components/feed/ModalComentarios';
 import { toggleLike } from '@/app/actions/feed';
+import { deletarPost } from '@/app/actions/posts';
 import { SeloAdmin } from '@/components/layout/SeloAdmin';
 
 const supabase = createClient();
 
 interface Post {
   id: string;
+  user_id: string;
   media_url: string | null;
   media_urls: string[] | null;
   media_type: string;
@@ -32,16 +34,14 @@ export default function FeedPage() {
   const [feedBloqueado, setFeedBloqueado] = useState(false);
   const [imagemAberta, setImagemAberta] = useState<Post | null>(null);
   const [postComentariosAberto, setPostComentariosAberto] = useState<Post | null>(null);
+  const [currentUserId, setCurrentUserId] = useState<string | null>(null);
+  const [isAdmin, setIsAdmin] = useState(false);
 
   const getImagensOrdenadas = (post: Post) => {
     if (!post.media_urls || post.media_urls.length === 0) {
       return post.media_url ? [post.media_url] : [];
     }
-    if (post.media_urls.length > 1) {
-      const capas = post.media_urls.slice(0, -1); 
-      return capas.reverse(); 
-    }
-    return post.media_urls;
+    return post.media_urls; 
   };
 
   const [optimisticLikes, addOptimisticLike] = useOptimistic<
@@ -73,11 +73,16 @@ export default function FeedPage() {
       }
 
       const { data: { user } } = await supabase.auth.getUser();
+      if (user) {
+        setCurrentUserId(user.id);
+        const { data: profile } = await supabase.from('profiles').select('is_admin').eq('id', user.id).single();
+        if (profile?.is_admin) setIsAdmin(true);
+      }
 
       const { data: postsData } = await supabase
         .from('posts')
         .select(`
-          id, media_url, media_urls, media_type, caption, has_spoiler, created_at,
+          id, user_id, media_url, media_urls, media_type, caption, has_spoiler, created_at,
           profiles (username, avatar_url, is_admin)
         `)
         .order('created_at', { ascending: false });
@@ -124,6 +129,17 @@ export default function FeedPage() {
     });
   };
 
+  const handleDeletar = async (post: Post) => {
+    if (!confirm('Tem certeza que deseja deletar este post?')) return;
+
+    try {
+      await deletarPost(post.id, post.media_urls || []);
+      setPosts((prev) => prev.filter((p) => p.id !== post.id));
+    } catch (error: any) {
+      alert(error.message || 'Erro ao deletar o post.');
+    }
+  };
+
   if (loading) {
     return <div className="flex justify-center items-center h-[50vh]"><Loader2 className="animate-spin text-accent" size={40} /></div>;
   }
@@ -132,11 +148,12 @@ export default function FeedPage() {
     return (
       <div className="flex flex-col items-center justify-center min-h-[70vh] text-center px-4">
         <div className="bg-surface border border-border p-6 rounded-full mb-6">
-          <AlertTriangle size={48} className="text-muted" />
+          <Lock size={48} className="text-muted" />
         </div>
         <h2 className="text-3xl font-bold text-text mb-4">Feed em Manutenção</h2>
         <p className="text-muted max-w-md mx-auto mb-8">Estamos organizando a comunidade do AniVerse para você. O Feed será liberado em breve!</p>
-        <Link href="/lancamentos" className="bg-accent text-white font-bold px-8 py-3 rounded-lg hover:bg-accent/90 transition-colors shadow-lg shadow-accent/20">
+        {/* LINK CORRIGIDO PARA A HOME (/) */}
+        <Link href="/" className="bg-accent text-white font-bold px-8 py-3 rounded-lg hover:bg-accent/90 transition-colors shadow-lg shadow-accent/20">
           Voltar para os Lançamentos
         </Link>
       </div>
@@ -166,9 +183,9 @@ export default function FeedPage() {
 
       {optimisticLikes.length === 0 ? (
         <div className="text-center py-20 border-2 border-dashed border-border rounded-2xl max-w-md mx-auto">
-          <p className="text-muted mb-4">O Feed está vazio. Seja o primeiro a postar o seu Top 5!</p>
+          <p className="text-muted mb-4">O Feed está vazio. Seja o primeiro a postar o seu Top 10!</p>
           <Link href="/top10" className="bg-accent text-white font-bold px-6 py-3 rounded-lg hover:bg-accent/90 transition-all">
-            Criar meu Top 5
+            Criar meu Top 10
           </Link>
         </div>
       ) : (
@@ -176,7 +193,6 @@ export default function FeedPage() {
           {optimisticLikes.map((post) => (
             <div key={post.id} className="bg-surface border border-border rounded-xl overflow-hidden shadow-sm hover:border-accent transition-colors w-full">
 
-              {/* Header do Post */}
               <div className="flex items-center gap-3 p-3">
                 <Link href={`/perfil/${post.profiles?.username}`} className="relative w-8 h-8 rounded-full overflow-hidden bg-border shrink-0 hover:ring-2 hover:ring-accent transition-all">
                   {post.profiles?.avatar_url ? (
@@ -187,7 +203,6 @@ export default function FeedPage() {
                 </Link>
                 <div className="flex-1">
                   <div className="flex items-center gap-1.5">
-                    {/* Link para o perfil público */}
                     <Link 
                       href={`/perfil/${post.profiles?.username}`} 
                       className="text-sm font-bold text-text hover:text-accent hover:underline transition-colors"
@@ -197,9 +212,18 @@ export default function FeedPage() {
                     {post.profiles?.is_admin && <SeloAdmin />}
                   </div>
                 </div>
+
+                {(post.user_id === currentUserId || isAdmin) && (
+                  <button 
+                    onClick={() => handleDeletar(post)}
+                    className="text-muted hover:text-red-500 transition-colors p-1 cursor-pointer"
+                    title="Deletar post"
+                  >
+                    <Trash2 size={18} />
+                  </button>
+                )}
               </div>
 
-              {/* Mídia (Carrossel) */}
               <div className="cursor-pointer relative" onClick={() => setImagemAberta(post)}>
                 <CarrosselImagens imagens={getImagensOrdenadas(post)} />
                 {post.has_spoiler && (
@@ -209,7 +233,6 @@ export default function FeedPage() {
                 )}
               </div>
 
-              {/* Legenda e Ações */}
               <div className="p-3">
                 {post.caption && <p className="text-sm text-text mb-3 line-clamp-2">{post.caption}</p>}
                 

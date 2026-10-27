@@ -4,6 +4,7 @@ import { useState, useEffect, useRef } from 'react';
 import { createClient } from '@/lib/supabase/client';
 import { Loader2, Send, Lock } from 'lucide-react';
 import Image from 'next/image';
+import Link from 'next/link'; // <-- IMPORT ADICIONADO
 import { formatDistanceToNow } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
 import { SeloAdmin } from '@/components/layout/SeloAdmin';
@@ -32,7 +33,6 @@ export function ChatComunidade() {
 
   useEffect(() => {
     const init = async () => {
-      // Verifica bloqueio
       const { data: config } = await supabase.from('site_config').select('chat_enabled').single();
       if (config?.chat_enabled === false) {
         setBloqueado(true);
@@ -55,14 +55,12 @@ export function ChatComunidade() {
 
     init();
 
-    // Realtime
     const channel = supabase
       .channel('chat-geral')
       .on(
         'postgres_changes',
         { event: 'INSERT', schema: 'public', table: 'chat_messages' },
         async (payload) => {
-          // Se estiver bloqueado, não processa mensagens novas
           if (bloqueado) return;
 
           const { data } = await supabase
@@ -97,13 +95,21 @@ export function ChatComunidade() {
     return <div className="flex justify-center py-10"><Loader2 className="animate-spin text-accent" size={32} /></div>;
   }
 
-  // TELA DE BLOQUEIO DENTRO DO COMPONENTE
+  // TELA DE BLOQUEIO COM O BOTÃO DE VOLTAR
   if (bloqueado) {
     return (
-      <div className="flex flex-col items-center justify-center h-[60vh] text-center px-4 bg-bg/20">
-        <Lock className="text-muted mb-4" size={48} />
-        <h3 className="text-xl font-bold text-text mb-2">Chat da Comunidade em Manutenção</h3>
-        <p className="text-muted text-sm">O chat será liberado em breve pelo administrador.</p>
+      <div className="flex flex-col items-center justify-center min-h-[60vh] text-center px-4 bg-bg/20">
+        <div className="bg-surface border border-border p-6 rounded-full mb-6">
+          <Lock className="text-muted" size={48} />
+        </div>
+        <h3 className="text-2xl font-bold text-text mb-4">Chat em Manutenção</h3>
+        <p className="text-muted max-w-md mx-auto mb-8">
+          Estamos preparando a comunidade do AniVerse para você. O chat será liberado em breve!
+        </p>
+        {/* LINK CORRIGIDO PARA A HOME (/) */}
+        <Link href="/" className="bg-accent text-white font-bold px-8 py-3 rounded-lg hover:bg-accent/90 transition-colors shadow-lg shadow-accent/20">
+          Voltar para os Lançamentos
+        </Link>
       </div>
     );
   }

@@ -4,7 +4,7 @@ import { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import { createClient } from '@/lib/supabase/client';
 import { Search, Loader2, GripVertical, X, Save, Star } from 'lucide-react';
-import { GeradorCard } from '@/components/top10/GeradorCard'; // <-- Deixe o VS Code auto-completar essa linha
+import { GeradorCard } from '@/components/top10/GeradorCard'; 
 import Image from 'next/image';
 
 import {
@@ -27,11 +27,7 @@ import { CSS } from '@dnd-kit/utilities';
 // --- Componente de Anime Individual (Arrastável) ---
 function SortableAnime({ anime, index, onRemove }: { anime: any, index: number, onRemove: (id: number) => void }) {
   const { attributes, listeners, setNodeRef, transform, transition } = useSortable({ id: anime.id });
-
-  const style = {
-    transform: CSS.Transform.toString(transform),
-    transition,
-  };
+  const style = { transform: CSS.Transform.toString(transform), transition };
 
   return (
     <div ref={setNodeRef} style={style} className="flex items-center gap-4 bg-surface border border-border p-3 rounded-xl mb-2 shadow-sm">
@@ -68,8 +64,6 @@ export default function Top10Page() {
   
   const [userId, setUserId] = useState<string | null>(null);
   const [username, setUsername] = useState<string>('usuario'); 
-  
-  // Novo estado para saber se o feed está bloqueado
   const [feedLiberado, setFeedLiberado] = useState(true);
 
   const sensors = useSensors(
@@ -79,37 +73,23 @@ export default function Top10Page() {
 
   useEffect(() => {
     const init = async () => {
-      // 1. Verifica se o feed está bloqueado no banco
       const { data: config } = await supabase.from('site_config').select('feed_enabled').single();
-      if (config?.feed_enabled === false) {
-        setFeedLiberado(false);
-      }
+      if (config?.feed_enabled === false) setFeedLiberado(false);
 
-      // 2. Autenticação e dados do usuário
       const { data: { user } } = await supabase.auth.getUser();
-      
-      if (!user) {
-        router.push('/login');
-        return;
-      }
-      
+      if (!user) { router.push('/login'); return; }
       setUserId(user.id);
 
-      const { data: profile } = await supabase
-        .from('profiles')
-        .select('username, avatar_url')
-        .eq('id', user.id)
-        .single();
-        
+      const { data: profile } = await supabase.from('profiles').select('username').eq('id', user.id).single();
       if (profile?.username) setUsername(profile.username);
 
-      // 3. Busca o Top 10 salvo
+      // BUSCA O TOP 10 (MUDOU DE 5 PARA 10)
       const { data } = await supabase
         .from('user_top10')
         .select('position, anime_id')
         .eq('user_id', user.id)
         .order('position', { ascending: true })
-        .limit(5);
+        .limit(10); // <-- MUDOU AQUI
 
       if (data && data.length > 0) {
         const animePromises = data.map(async (item) => {
@@ -117,7 +97,6 @@ export default function Top10Page() {
           if (!res.ok) return null;
           return await res.json();
         });
-        
         const resolvedAnimes = (await Promise.all(animePromises)).filter(Boolean);
         setAnimes(resolvedAnimes);
       }
@@ -128,7 +107,6 @@ export default function Top10Page() {
   const handleSearch = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!searchQuery.trim()) return;
-
     setIsSearching(true);
     try {
       const res = await fetch('/api/search-anime', {
@@ -136,11 +114,8 @@ export default function Top10Page() {
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ search: searchQuery })
       });
-
       if (!res.ok) throw new Error('Falha na busca');
-      
-      const results = await res.json();
-      setSearchResults(results);
+      setSearchResults(await res.json());
     } catch (error) {
       console.error("Erro na busca:", error);
     } finally {
@@ -149,17 +124,14 @@ export default function Top10Page() {
   };
 
   const addAnime = (anime: any) => {
-    if (animes.length >= 5) return alert("Você já tem 5 animes no Top!");
+    if (animes.length >= 10) return alert("Você já tem 10 animes no Top!"); // <-- MUDOU AQUI
     if (animes.find(a => a.id === anime.id)) return alert("Esse anime já está na sua lista!");
-    
     setAnimes([...animes, anime]);
     setSearchQuery('');
     setSearchResults([]);
   };
 
-  const removeAnime = (id: number) => {
-    setAnimes(animes.filter(a => a.id !== id));
-  };
+  const removeAnime = (id: number) => setAnimes(animes.filter(a => a.id !== id));
 
   const handleDragEnd = (event: any) => {
     const { active, over } = event;
@@ -172,34 +144,25 @@ export default function Top10Page() {
     }
   };
 
-  const saveTop5 = async () => {
+  const saveTop10 = async () => {
     if (!userId) return;
     setIsSaving(true);
-
     await supabase.from('user_top10').delete().eq('user_id', userId);
-
     const insertData = animes.map((anime, index) => ({
       user_id: userId,
       anime_id: anime.id,
       position: index + 1
     }));
-
     const { error } = await supabase.from('user_top10').insert(insertData);
-
-    if (error) {
-      alert("Erro ao salvar o Top 5.");
-      console.error(error);
-    } else {
-      alert("Top 5 salvo com sucesso!");
-    }
+    if (error) alert("Erro ao salvar o Top 10."); else alert("Top 10 salvo com sucesso!");
     setIsSaving(false);
   };
 
   return (
     <div className="w-full max-w-3xl mx-auto py-8">
       <header className="mb-8">
-        <h1 className="text-3xl font-bold text-text mb-2">Meu Top 5 Animes</h1>
-        <p className="text-muted">Monte seu ranking definitivo. Arraste para ordenar do seu favorito (1º) ao menos favorito (5º).</p>
+        <h1 className="text-3xl font-bold text-text mb-2">Meu Top 10 Animes</h1>
+        <p className="text-muted">Monte seu ranking definitivo. Arraste para ordenar do seu favorito (1º) ao menos favorito (10º).</p>
       </header>
 
       <div className="mb-8 relative">
@@ -249,28 +212,25 @@ export default function Top10Page() {
           </DndContext>
           
           <button
-            onClick={saveTop5}
+            onClick={saveTop10}
             disabled={isSaving || animes.length < 1}
             className="w-full mt-6 bg-accent text-white font-bold py-4 rounded-xl hover:bg-accent/90 transition-all flex items-center justify-center gap-2 disabled:opacity-50 cursor-pointer"
           >
             {isSaving ? <Loader2 className="animate-spin" size={20} /> : <Save size={20} />}
-            Salvar Meu Top 5
+            Salvar Meu Top 10
           </button>
 
-          {animes.length === 5 && (
+          {/* O GERADOR CARD SÓ APARECE QUANDO TIVER 10 */}
+          {animes.length === 10 && (
             <div className="flex flex-col items-center gap-4 mt-6 w-full max-w-md mx-auto">
-              <GeradorCard 
-                animes={animes} 
-                username={username} 
-                feedLiberado={feedLiberado} 
-              />
+              <GeradorCard animes={animes} username={username} feedLiberado={feedLiberado} />
             </div>
           )}
         </div>
       ) : (
         <div className="text-center py-20 border-2 border-dashed border-border rounded-2xl">
           <Star className="mx-auto text-muted mb-4" size={48} />
-          <h2 className="text-xl font-bold text-text mb-2">Seu Top 5 está vazio</h2>
+          <h2 className="text-xl font-bold text-text mb-2">Seu Top 10 está vazio</h2>
           <p className="text-muted text-sm">Use a barra de busca acima para adicionar seus animes favoritos.</p>
         </div>
       )}

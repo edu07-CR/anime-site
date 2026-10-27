@@ -25,9 +25,9 @@ export function CarrosselImagens({ imagens }: { imagens: string[] }) {
         priority={index === 0}
       />
 
-      {/* O NÚMERO DA POSIÇÃO (1º, 2º, 3º...) */}
+            {/* O NÚMERO DA POSIÇÃO (1º, 2º, 3º...) */}
       <div className="absolute top-3 left-3 bg-black/70 backdrop-blur-md text-white font-extrabold text-lg w-10 h-10 flex items-center justify-center rounded-xl border border-white/20 z-10 shadow-lg">
-        {imagens.length - index}º
+        {index + 1}º
       </div>
 
       {/* Setas e Bolinhas */}

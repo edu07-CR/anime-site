@@ -17,7 +17,7 @@ const navItems = [
   { name: 'Destaques', href: '/destaques', icon: Compass },
   { name: 'Mensagens', href: '/mensagens', icon: MessageCircle },
   { name: 'Feed', href: '/feed', icon: LayoutGrid },
-  { name: 'Meu Top 5', href: '/top10', icon: Trophy },
+  { name: 'Meu Top 10', href: '/top10', icon: Trophy },
 ];
 
 export function Navbar() {

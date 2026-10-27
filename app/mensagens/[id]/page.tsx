@@ -130,7 +130,7 @@ export default function MensagensPage() {
   }
 
   // TELA DE BLOQUEIO
-  if (chatBloqueado) {
+    if (chatBloqueado) {
     return (
       <div className="flex flex-col items-center justify-center min-h-[70vh] text-center px-4">
         <div className="bg-surface border border-border p-6 rounded-full mb-6">
@@ -140,7 +140,8 @@ export default function MensagensPage() {
         <p className="text-muted max-w-md mx-auto mb-8">
           Estamos preparando a comunidade do AniVerse para você. As mensagens serão liberadas em breve!
         </p>
-        <Link href="/lancamentos" className="bg-accent text-white font-bold px-8 py-3 rounded-lg hover:bg-accent/90 transition-colors shadow-lg shadow-accent/20">
+        {/* LINK CORRIGIDO AQUI */}
+        <Link href="/" className="bg-accent text-white font-bold px-8 py-3 rounded-lg hover:bg-accent/90 transition-colors shadow-lg shadow-accent/20">
           Voltar para os Lançamentos
         </Link>
       </div>
