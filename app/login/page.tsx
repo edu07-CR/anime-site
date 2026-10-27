@@ -176,6 +176,15 @@ export default function LoginPage() {
             </button>
           </div>
 
+          {/* LINK DE ESQUECEU A SENHA - SÓ APARECE NO LOGIN */}
+          {isLogin && (
+            <div className="flex justify-end mt-[-8px]">
+              <Link href="/esqueceu-senha" className="text-sm text-accent hover:underline">
+                Esqueceu a senha?
+              </Link>
+            </div>
+          )}
+
           {/* SELETOR DE AVATARES (APARECE SÓ NO CADASTRO) */}
           {!isLogin && (
             <div className="mt-2">

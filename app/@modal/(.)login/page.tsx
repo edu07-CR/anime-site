@@ -5,6 +5,7 @@ import { useRouter } from 'next/navigation';
 import { createClient } from '@/lib/supabase/client';
 import { Mail, Lock, Loader2, Eye, EyeOff, User, X } from 'lucide-react';
 import { SeletorAvatares } from '@/components/perfil/SelecionarAvatar';
+import Link from 'next/link'; // <-- Importação do Link adicionada
 
 export default function LoginModal() {
   const [isLogin, setIsLogin] = useState(true);
@@ -176,6 +177,19 @@ export default function LoginModal() {
               {showPassword ? <EyeOff size={18} /> : <Eye size={18} />}
             </button>
           </div>
+
+          {/* LINK DE ESQUECEU A SENHA - SÓ APARECE NO LOGIN */}
+          {isLogin && (
+            <div className="flex justify-end mt-[-8px]">
+              <Link 
+                href="/esqueceu-senha" 
+                onClick={() => router.back()} // Fecha o modal antes de ir para a página
+                className="text-sm text-accent hover:underline"
+              >
+                Esqueceu a senha?
+              </Link>
+            </div>
+          )}
 
           {!isLogin && (
             <div className="mt-2">
