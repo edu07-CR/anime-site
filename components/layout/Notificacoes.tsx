@@ -22,12 +22,14 @@ export function Notificacoes() {
   const supabase = createClient();
 
   useEffect(() => {
+    let channel: any;
+
     const init = async () => {
       const { data: { user } } = await supabase.auth.getUser();
       if (!user) return;
       setUserId(user.id);
 
-      // Busca as notificações mais recentes
+      // 1. Busca inicial das notificações
       const { data } = await supabase
         .from('notifications')
         .select('*')
@@ -36,7 +38,27 @@ export function Notificacoes() {
         .limit(10);
 
       if (data) setNotificacoes(data);
+
+      // 2. Configura o Realtime para escutar novas notificações
+      channel = supabase
+        .channel('notificacoes-realtime')
+        .on(
+          'postgres_changes',
+          {
+            event: 'INSERT', // Escuta apenas quando uma nova notificação é inserida
+            schema: 'public',
+            table: 'notifications',
+            filter: `user_id=eq.${user.id}`, // Só escuta as notificações deste usuário
+          },
+          (payload) => {
+            // Quando uma nova notificação chega, adiciona no topo da lista
+            const novaNotificacao = payload.new as Notificacao;
+            setNotificacoes((prev) => [novaNotificacao, ...prev].slice(0, 10));
+          }
+        )
+        .subscribe();
     };
+
     init();
 
     // Fecha o menu se clicar fora
@@ -46,21 +68,23 @@ export function Notificacoes() {
       }
     };
     document.addEventListener('mousedown', handleClickOutside);
-    return () => document.removeEventListener('mousedown', handleClickOutside);
+
+    return () => {
+      document.removeEventListener('mousedown', handleClickOutside);
+      if (channel) supabase.removeChannel(channel); // Limpa o canal ao desmontar
+    };
   }, [supabase]);
 
   // Marcar como lida
   const marcarComoLida = async (id: string) => {
     if (!userId) return;
     
-    // Atualiza no banco
     await supabase
       .from('notifications')
       .update({ is_read: true })
       .eq('id', id)
       .eq('user_id', userId);
 
-    // Atualiza na tela
     setNotificacoes((prev) =>
       prev.map((n) => (n.id === id ? { ...n, is_read: true } : n))
     );
@@ -81,11 +105,10 @@ export function Notificacoes() {
 
   const naoLidas = notificacoes.filter((n) => !n.is_read).length;
 
-  if (!userId) return null; // Se não estiver logado, não mostra o sino
+  if (!userId) return null;
 
   return (
     <div className="relative" ref={menuRef}>
-      {/* O Sino com a Bolinha Vermelha */}
       <button
         onClick={() => setIsOpen(!isOpen)}
         className="relative p-2 rounded-full hover:bg-bg transition-colors cursor-pointer text-muted hover:text-accent"
@@ -96,7 +119,6 @@ export function Notificacoes() {
         )}
       </button>
 
-      {/* O Menu Dropdown */}
       {isOpen && (
         <div className="absolute right-0 top-full mt-2 w-80 bg-surface border border-border rounded-xl shadow-2xl z-50 overflow-hidden">
           <div className="flex items-center justify-between p-4 border-b border-border bg-bg/50">
