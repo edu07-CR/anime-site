@@ -14,7 +14,7 @@ const navItems = [
   { name: 'Lançamentos', href: '/', icon: CalendarDays },
   { name: 'Destaques', href: '/destaques', icon: Compass },
   { name: 'Chat', href: '/chat', icon: MessageSquare },
-  { name: 'Feed', href: '/feed', icon: LayoutGrid }, // <-- NOVO ITEM AQUI
+  { name: 'Feed', href: '/feed', icon: LayoutGrid },
   { name: 'Meu Top 5', href: '/top10', icon: Trophy },
 ];
 
@@ -149,7 +149,7 @@ export function Navbar() {
       </header>
 
       {/* MOBILE */}
-      <nav className="md:hidden fixed bottom-0 left-0 right-0 z-50 h-16 bg-surface/90 backdrop-blur-lg border-t border-border flex items-center justify-around pb-safe transition-colors duration-300">
+      <nav className="md:hidden fixed bottom-0 left-0 right-0 z-[60] h-16 bg-surface/90 backdrop-blur-lg border-t border-border flex items-center justify-around pb-safe transition-colors duration-300">
         {navItems.map((item) => {
           const isActive = pathname === item.href;
           const Icon = item.icon;
@@ -203,12 +203,12 @@ export function Navbar() {
           )}
 
           {user && isMenuOpen && (
-            <div className="absolute bottom-full mb-2 right-4 w-48 bg-surface border border-border rounded-lg shadow-xl py-2 flex flex-col z-50">
-              <Link href="/perfil" onClick={() => setIsMenuOpen(false)} className="px-4 py-2 text-sm text-text hover:bg-bg transition-colors cursor-pointer">
+            <div className="absolute bottom-full mb-3 right-0 w-48 bg-surface border border-border rounded-lg shadow-2xl py-2 flex flex-col z-[70]">
+              <Link href="/perfil" onClick={() => setIsMenuOpen(false)} className="px-4 py-3 text-sm text-text hover:bg-bg transition-colors cursor-pointer">
                 Ver meu perfil
               </Link>
               <div className="h-[1px] bg-border my-1" />
-              <button onClick={handleLogout} className="px-4 py-2 text-sm text-red-500 hover:bg-red-500/10 transition-colors flex items-center gap-2 text-left w-full cursor-pointer">
+              <button onClick={handleLogout} className="px-4 py-3 text-sm text-red-500 hover:bg-red-500/10 transition-colors flex items-center gap-2 text-left w-full cursor-pointer">
                 <LogOut size={16} /> Sair da conta
               </button>
             </div>
@@ -217,7 +217,7 @@ export function Navbar() {
       </nav>
       
       {isMenuOpen && (
-        <div className="md:hidden fixed inset-0 bg-black/50 z-40" onClick={() => setIsMenuOpen(false)} />
+        <div className="md:hidden fixed inset-0 bg-black/50 z-50" onClick={() => setIsMenuOpen(false)} />
       )}
     </>
   );
