@@ -12,7 +12,7 @@ export default function LoginPage() {
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [username, setUsername] = useState('');
-  const [avatarUrl, setAvatarUrl] = useState(''); // Estado para o avatar
+  const [avatarUrl, setAvatarUrl] = useState(''); 
   
   const [showPassword, setShowPassword] = useState(false);
   const [loading, setLoading] = useState(false);
@@ -29,7 +29,6 @@ export default function LoginPage() {
     setLoading(true);
     setError(null);
 
-    // Validação de E-mail
     const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
     if (!emailRegex.test(email)) {
       setError('Por favor, insira um e-mail válido.');
@@ -44,7 +43,6 @@ export default function LoginPage() {
       return;
     }
 
-    // Validações de Cadastro
     if (!isLogin) {
       if (password.length < 6) {
         setError('A senha deve ter no mínimo 6 caracteres.');
@@ -79,7 +77,6 @@ export default function LoginPage() {
         const { error } = await supabase.auth.signInWithPassword({ email, password });
         if (error) throw error;
       } else {
-        // Cria a conta e envia o username/avatar nos metadados
         const { data: authData, error: authError } = await supabase.auth.signUp({ 
           email, 
           password, 
@@ -87,7 +84,6 @@ export default function LoginPage() {
         });
         if (authError) throw authError;
 
-        // Se a conta foi criada, atualiza o avatar no perfil (caso o trigger não tenha feito)
         if (authData.user) {
           await supabase.from('profiles').update({ avatar_url: avatarUrl }).eq('id', authData.user.id);
         }
@@ -104,7 +100,7 @@ export default function LoginPage() {
     }
   };
 
-  const handleSocialLogin = async (provider: 'google' | 'facebook') => {
+  const handleSocialLogin = async (provider: 'google') => {
     setSocialLoading(provider);
     setError(null);
 
@@ -176,7 +172,6 @@ export default function LoginPage() {
             </button>
           </div>
 
-          {/* LINK DE ESQUECEU A SENHA - SÓ APARECE NO LOGIN */}
           {isLogin && (
             <div className="flex justify-end mt-[-8px]">
               <Link href="/esqueceu-senha" className="text-sm text-accent hover:underline">
@@ -185,7 +180,6 @@ export default function LoginPage() {
             </div>
           )}
 
-          {/* SELETOR DE AVATARES (APARECE SÓ NO CADASTRO) */}
           {!isLogin && (
             <div className="mt-2">
               <label className="text-sm font-semibold text-text mb-2 block">Escolha seu avatar</label>
@@ -203,12 +197,12 @@ export default function LoginPage() {
           <div className="relative flex justify-center text-xs uppercase"><span className="bg-surface px-2 text-muted">Ou continue com</span></div>
         </div>
 
-        <div className="flex gap-3">
+        <div className="flex">
           <button
             type="button"
             onClick={() => handleSocialLogin('google')}
             disabled={!!socialLoading}
-            className="flex-1 flex items-center justify-center gap-2 bg-bg border border-border text-text py-3 rounded-lg hover:border-accent transition-colors cursor-pointer font-medium text-sm disabled:opacity-50"
+            className="flex-1 flex items-center justify-center gap-3 bg-bg border border-border text-text py-3 rounded-lg hover:border-accent transition-colors cursor-pointer font-medium text-sm disabled:opacity-50"
           >
             {socialLoading === 'google' ? <Loader2 className="animate-spin" size={18} /> : (
               <svg className="w-5 h-5" viewBox="0 0 24 24">
@@ -218,21 +212,7 @@ export default function LoginPage() {
                 <path fill="#EA4335" d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.07l3.66 2.84c.87-2.6 3.3-4.53 6.16-4.53z"/>
               </svg>
             )}
-            Google
-          </button>
-
-          <button
-            type="button"
-            onClick={() => handleSocialLogin('facebook')}
-            disabled={!!socialLoading}
-            className="flex-1 flex items-center justify-center gap-2 bg-bg border border-border text-text py-3 rounded-lg hover:border-accent transition-colors cursor-pointer font-medium text-sm disabled:opacity-50"
-          >
-            {socialLoading === 'facebook' ? <Loader2 className="animate-spin" size={18} /> : (
-              <svg className="w-5 h-5" viewBox="0 0 24 24" fill="#1877F2">
-                <path d="M24 12.073c0-6.627-5.373-12-12-12s-12 5.373-12 12c0 5.99 4.388 10.954 10.125 11.854v-8.385H7.078v-3.47h3.047V9.43c0-3.007 1.792-4.669 4.533-4.669 1.312 0 2.686.235 2.686.235v2.953H15.83c-1.491 0-1.956.925-1.956 1.874v2.25h3.328l-.532 3.47h-2.796v8.385C19.612 23.027 24 18.062 24 12.073z"/>
-              </svg>
-            )}
-            Facebook
+            Entrar com Google
           </button>
         </div>
 
