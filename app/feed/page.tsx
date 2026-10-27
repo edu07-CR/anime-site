@@ -8,7 +8,7 @@ import Link from 'next/link';
 import { CarrosselImagens } from '@/components/feed/CarrosselImagens';
 import { ModalComentarios } from '@/components/feed/ModalComentarios';
 import { toggleLike } from '@/app/actions/feed';
-import { SeloAdmin } from '@/components/layout/SeloAdmin'; // <-- IMPORT DO SELO
+import { SeloAdmin } from '@/components/layout/SeloAdmin';
 
 const supabase = createClient();
 
@@ -20,7 +20,7 @@ interface Post {
   caption: string | null;
   has_spoiler: boolean;
   created_at: string;
-  profiles: { username: string; avatar_url: string; is_admin: boolean } | null; // <-- is_admin AQUI
+  profiles: { username: string; avatar_url: string; is_admin: boolean } | null;
   likes_count: number;
   comments_count: number;
   user_has_liked: boolean;
@@ -176,22 +176,30 @@ export default function FeedPage() {
           {optimisticLikes.map((post) => (
             <div key={post.id} className="bg-surface border border-border rounded-xl overflow-hidden shadow-sm hover:border-accent transition-colors w-full">
 
+              {/* Header do Post */}
               <div className="flex items-center gap-3 p-3">
-                <div className="relative w-8 h-8 rounded-full overflow-hidden bg-border">
+                <Link href={`/perfil/${post.profiles?.username}`} className="relative w-8 h-8 rounded-full overflow-hidden bg-border shrink-0 hover:ring-2 hover:ring-accent transition-all">
                   {post.profiles?.avatar_url ? (
                     <Image src={post.profiles.avatar_url} alt="Avatar" fill className="object-cover" />
                   ) : (
                     <div className="w-full h-full flex items-center justify-center text-xs font-bold">{post.profiles?.username?.charAt(0).toUpperCase() || '?'}</div>
                   )}
-                </div>
+                </Link>
                 <div className="flex-1">
                   <div className="flex items-center gap-1.5">
-                    <p className="text-sm font-bold text-text">{post.profiles?.username || 'Usuário'}</p>
-                    {post.profiles?.is_admin && <SeloAdmin />} {/* <-- SELO AQUI */}
+                    {/* Link para o perfil público */}
+                    <Link 
+                      href={`/perfil/${post.profiles?.username}`} 
+                      className="text-sm font-bold text-text hover:text-accent hover:underline transition-colors"
+                    >
+                      {post.profiles?.username || 'Usuário'}
+                    </Link>
+                    {post.profiles?.is_admin && <SeloAdmin />}
                   </div>
                 </div>
               </div>
 
+              {/* Mídia (Carrossel) */}
               <div className="cursor-pointer relative" onClick={() => setImagemAberta(post)}>
                 <CarrosselImagens imagens={getImagensOrdenadas(post)} />
                 {post.has_spoiler && (
@@ -201,6 +209,7 @@ export default function FeedPage() {
                 )}
               </div>
 
+              {/* Legenda e Ações */}
               <div className="p-3">
                 {post.caption && <p className="text-sm text-text mb-3 line-clamp-2">{post.caption}</p>}
                 

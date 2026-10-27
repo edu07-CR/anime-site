@@ -1,11 +1,11 @@
 'use client';
 
-import { useEffect, useState, useRef, useMemo } from 'react';
+import { useEffect, useState, useMemo } from 'react';
 import Link from 'next/link';
 import Image from 'next/image';
 import { usePathname, useRouter } from 'next/navigation';
 import { createPortal } from 'react-dom';
-import { CalendarDays, Trophy, User, LogOut, Compass, MessageSquare, LayoutGrid } from 'lucide-react';
+import { CalendarDays, Trophy, User, LogOut, Compass, MessageCircle, LayoutGrid } from 'lucide-react';
 import { createClient } from '@/lib/supabase/client';
 import { User as SupabaseUser } from '@supabase/supabase-js';
 import { ThemeToggle } from './ThemeToggle';
@@ -14,7 +14,7 @@ import { Notificacoes } from './Notificacoes';
 const navItems = [
   { name: 'Lançamentos', href: '/', icon: CalendarDays },
   { name: 'Destaques', href: '/destaques', icon: Compass },
-  { name: 'Chat', href: '/chat', icon: MessageSquare },
+  { name: 'Mensagens', href: '/mensagens', icon: MessageCircle },
   { name: 'Feed', href: '/feed', icon: LayoutGrid },
   { name: 'Meu Top 5', href: '/top10', icon: Trophy },
 ];
@@ -23,44 +23,68 @@ export function Navbar() {
   const pathname = usePathname();
   const router = useRouter();
   
-  // 1. Estabilizando o Supabase para não criar novas instâncias a cada render
   const supabase = useMemo(() => createClient(), []);
   
   const [user, setUser] = useState<SupabaseUser | null>(null);
   const [username, setUsername] = useState<string>('');
   const [avatarUrl, setAvatarUrl] = useState<string>('');
   const [isMenuOpen, setIsMenuOpen] = useState(false);
-  const [mounted, setMounted] = useState(false); // Para o Portal
-  
-  // Removemos o menuRef, pois o backdrop resolverá o clique fora
+  const [mounted, setMounted] = useState(false);
+  const [unreadCount, setUnreadCount] = useState(0);
 
   useEffect(() => {
     setMounted(true);
   }, []);
 
   useEffect(() => {
+    let channel: any;
+
     const getUser = async () => {
       const { data: { user } } = await supabase.auth.getUser();
-      
-      // 3. Evitando re-render desnecessário se o usuário for o mesmo
       setUser(prev => (prev?.id === user?.id ? prev : user));
       
       if (user) {
         const { data } = await supabase.from('profiles').select('username, avatar_url').eq('id', user.id).single();
         if (data) { setUsername(data.username || 'Perfil'); setAvatarUrl(data.avatar_url || ''); }
+
+        // Função para buscar a contagem
+        const fetchUnread = async () => {
+          const { count } = await supabase
+            .from('direct_messages')
+            .select('*', { count: 'exact', head: true })
+            .eq('receiver_id', user.id)
+            .eq('is_read', false);
+          setUnreadCount(count || 0);
+        };
+
+        fetchUnread(); // Busca inicial
+
+        // Configura o Realtime
+        channel = supabase
+          .channel('navbar-mensagens')
+          .on(
+            'postgres_changes',
+            { event: '*', schema: 'public', table: 'direct_messages' },
+            () => {
+              fetchUnread(); // Recalcula a contagem a cada mudança
+            }
+          )
+          .subscribe();
       }
     };
     
     getUser();
     
     const { data: authListener } = supabase.auth.onAuthStateChange((event, session) => {
-      // 3. Evitando re-render desnecessário aqui também
       setUser(prev => (prev?.id === session?.user?.id ? prev : session?.user ?? null));
-      if (!session?.user) { setUsername(''); setAvatarUrl(''); }
+      if (!session?.user) { setUsername(''); setAvatarUrl(''); setUnreadCount(0); }
     });
     
-    return () => authListener.subscription.unsubscribe();
-  }, [supabase.auth]);
+    return () => {
+      authListener.subscription.unsubscribe();
+      if (channel) supabase.removeChannel(channel);
+    };
+  }, [supabase]);
 
   const handleLogout = async () => {
     await supabase.auth.signOut();
@@ -90,12 +114,19 @@ export function Navbar() {
               <Link
                 key={item.name}
                 href={item.href}
-                className={`flex items-center gap-2 px-3 lg:px-4 py-2 rounded-lg transition-colors font-medium text-sm cursor-pointer ${
+                className={`relative flex items-center gap-2 px-3 lg:px-4 py-2 rounded-lg transition-colors font-medium text-sm cursor-pointer ${
                   isActive ? 'bg-accent/10 text-accent' : 'text-muted hover:text-text hover:bg-bg'
                 }`}
               >
                 <Icon size={18} />
                 <span className="hidden lg:block">{item.name}</span>
+                
+                {/* BOLINHA DE MENSAGENS NÃO LIDAS */}
+                {item.name === 'Mensagens' && unreadCount > 0 && (
+                  <span className="absolute -top-1 -right-1 bg-red-500 text-white text-[10px] font-bold px-1.5 py-0.5 rounded-full min-w-[18px] text-center">
+                    {unreadCount}
+                  </span>
+                )}
               </Link>
             );
           })}
@@ -148,12 +179,19 @@ export function Navbar() {
             <Link
               key={item.name}
               href={item.href}
-              className={`flex flex-col items-center justify-center w-full h-full gap-1 transition-colors cursor-pointer ${
+              className={`relative flex flex-col items-center justify-center w-full h-full gap-1 transition-colors cursor-pointer ${
                 isActive ? 'text-accent' : 'text-muted hover:text-text'
               }`}
             >
               <Icon size={20} className={isActive ? 'stroke-[2.5px]' : 'stroke-2'} />
               <span className="text-[9px] font-medium">{item.name}</span>
+
+              {/* BOLINHA DE MENSAGENS NO MOBILE */}
+              {item.name === 'Mensagens' && unreadCount > 0 && (
+                <span className="absolute top-2 right-3 bg-red-500 text-white text-[9px] font-bold px-1.5 py-0.5 rounded-full">
+                  {unreadCount}
+                </span>
+              )}
             </Link>
           );
         })}
@@ -195,15 +233,13 @@ export function Navbar() {
         </div>
       </nav>
 
-      {/* O PORTAL COM O MENU (JSX DIRETO E ESTÁVEL) */}
+      {/* O PORTAL COM O MENU */}
       {isMenuOpen && mounted && createPortal(
         <div className="fixed inset-0 z-[9999] flex items-end justify-end p-4 pointer-events-none">
-          {/* Backdrop para fechar o menu ao clicar fora */}
           <div
             className="absolute inset-0 bg-black/50 pointer-events-auto"
             onClick={() => setIsMenuOpen(false)}
           />
-          {/* O Menu em si */}
           <div className="relative w-48 bg-surface border border-border rounded-lg shadow-2xl py-2 flex flex-col pointer-events-auto mb-16 mr-2">
             <Link
               href="/perfil"
