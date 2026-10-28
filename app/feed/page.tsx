@@ -1,6 +1,7 @@
 'use client';
 
 import { useState, useEffect, useOptimistic, startTransition } from 'react';
+import { useRouter } from 'next/navigation'; // <-- IMPORT DO ROUTER
 import { createClient } from '@/lib/supabase/client';
 import { Loader2, Sparkles, Heart, MessageCircle, AlertTriangle, X, Trash2, Lock, PlusCircle } from 'lucide-react';
 import Image from 'next/image';
@@ -24,7 +25,7 @@ interface Post {
   caption: string | null;
   has_spoiler: boolean;
   created_at: string;
-  is_ranking: boolean; // <-- NOVO CAMPO
+  is_ranking: boolean;
   profiles: { username: string; avatar_url: string; is_admin: boolean } | null;
   likes_count: number;
   comments_count: number;
@@ -32,6 +33,7 @@ interface Post {
 }
 
 export default function FeedPage() {
+  const router = useRouter(); // <-- INICIALIZA O ROUTER
   const [posts, setPosts] = useState<Post[]>([]);
   const [loading, setLoading] = useState(true);
   const [feedBloqueado, setFeedBloqueado] = useState(false);
@@ -69,6 +71,14 @@ export default function FeedPage() {
 
   useEffect(() => {
     const checkAndFetch = async () => {
+      // 1. VERIFICA SE ESTÁ LOGADO
+      const { data: { user } } = await supabase.auth.getUser();
+      if (!user) {
+        router.push('/login');
+        return;
+      }
+
+      // 2. Verifica se o feed está bloqueado
       const { data: config } = await supabase.from('site_config').select('feed_enabled').single();
       if (config?.feed_enabled === false) {
         setFeedBloqueado(true);
@@ -76,12 +86,9 @@ export default function FeedPage() {
         return;
       }
 
-      const { data: { user } } = await supabase.auth.getUser();
-      if (user) {
-        setCurrentUserId(user.id);
-        const { data: profile } = await supabase.from('profiles').select('is_admin').eq('id', user.id).single();
-        if (profile?.is_admin) setIsAdmin(true);
-      }
+      setCurrentUserId(user.id);
+      const { data: profile } = await supabase.from('profiles').select('is_admin').eq('id', user.id).single();
+      if (profile?.is_admin) setIsAdmin(true);
 
       const { data: postsData } = await supabase
         .from('posts')
@@ -117,7 +124,7 @@ export default function FeedPage() {
     };
 
     checkAndFetch();
-  }, []);
+  }, [supabase, router]); // <-- ADICIONA ROUTER NAS DEPENDÊNCIAS
 
   const handleLike = (post: Post) => {
     startTransition(async () => {
@@ -246,7 +253,6 @@ export default function FeedPage() {
                     )}
                   </div>
 
-                  {/* MÍDIA (SÓ APARECE SE TIVER IMAGEM) */}
                   {getImagensOrdenadas(post).length > 0 ? (
                     <div className="cursor-pointer relative" onClick={() => setImagemAberta(post)}>
                       <CarrosselImagens imagens={getImagensOrdenadas(post)} isRanking={post.is_ranking} />
@@ -257,7 +263,6 @@ export default function FeedPage() {
                       )}
                     </div>
                   ) : (
-                    /* POST DE TEXTO PURO */
                     <div className="px-4 py-2">
                       <p className="text-text text-lg whitespace-pre-wrap">{post.caption}</p>
                     </div>

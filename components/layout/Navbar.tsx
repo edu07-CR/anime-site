@@ -5,7 +5,7 @@ import Link from 'next/link';
 import Image from 'next/image';
 import { usePathname, useRouter } from 'next/navigation';
 import { createPortal } from 'react-dom';
-import { CalendarDays, Trophy, User, LogOut, Compass, MessageCircle, LayoutGrid, Search, Menu, X } from 'lucide-react';
+import { CalendarDays, Trophy, User, LogOut, Compass, MessageCircle, LayoutGrid, Search, Menu, X, ShieldAlert } from 'lucide-react';
 import { createClient } from '@/lib/supabase/client';
 import { User as SupabaseUser } from '@supabase/supabase-js';
 import { ThemeToggle } from './ThemeToggle';
@@ -28,8 +28,9 @@ export function Navbar() {
   const [user, setUser] = useState<SupabaseUser | null>(null);
   const [username, setUsername] = useState<string>('');
   const [avatarUrl, setAvatarUrl] = useState<string>('');
+  const [isAdmin, setIsAdmin] = useState(false); // <-- NOVO ESTADO
   const [isMenuOpen, setIsMenuOpen] = useState(false);
-  const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false); // Novo menu mobile
+  const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
   const [mounted, setMounted] = useState(false);
   const [unreadCount, setUnreadCount] = useState(0);
 
@@ -45,8 +46,13 @@ export function Navbar() {
       setUser(prev => (prev?.id === user?.id ? prev : user));
       
       if (user) {
-        const { data } = await supabase.from('profiles').select('username, avatar_url').eq('id', user.id).single();
-        if (data) { setUsername(data.username || 'Perfil'); setAvatarUrl(data.avatar_url || ''); }
+        // Busca o perfil COMPLETO (incluindo is_admin)
+        const { data } = await supabase.from('profiles').select('username, avatar_url, is_admin').eq('id', user.id).single();
+        if (data) { 
+          setUsername(data.username || 'Perfil'); 
+          setAvatarUrl(data.avatar_url || ''); 
+          setIsAdmin(data.is_admin || false); // <-- SALVA O STATUS DE ADMIN
+        }
 
         const fetchUnread = async () => {
           const { count } = await supabase
@@ -74,7 +80,7 @@ export function Navbar() {
     
     const { data: authListener } = supabase.auth.onAuthStateChange((event, session) => {
       setUser(prev => (prev?.id === session?.user?.id ? prev : session?.user ?? null));
-      if (!session?.user) { setUsername(''); setAvatarUrl(''); setUnreadCount(0); }
+      if (!session?.user) { setUsername(''); setAvatarUrl(''); setUnreadCount(0); setIsAdmin(false); }
     });
     
     return () => {
@@ -93,7 +99,7 @@ export function Navbar() {
 
   return (
     <>
-      {/* DESKTOP (Mantido igual) */}
+      {/* DESKTOP */}
       <header className="hidden md:flex sticky top-0 z-50 w-full h-16 bg-surface/80 backdrop-blur-md border-b border-border items-center justify-between px-6 transition-colors duration-300">
         <Link href="/" className="flex items-center gap-2 group cursor-pointer">
           <div className="flex items-center justify-center w-8 h-8 rounded-full border-2 border-accent group-hover:bg-accent/10 transition-colors">
@@ -132,6 +138,19 @@ export function Navbar() {
             <Compass size={18} />
             <span className="hidden lg:block">Destaques</span>
           </Link>
+
+          {/* BOTÃO DE ADMIN NO DESKTOP (SÓ APARECE PARA ADMINS) */}
+          {isAdmin && (
+            <Link 
+              href="/admin" 
+              className={`flex items-center gap-2 px-3 lg:px-4 py-2 rounded-lg transition-colors font-medium text-sm cursor-pointer ${
+                pathname === '/admin' ? 'bg-red-500/10 text-red-500' : 'text-muted hover:text-red-500 hover:bg-red-500/10'
+              }`}
+            >
+              <ShieldAlert size={18} />
+              <span className="hidden lg:block">Admin</span>
+            </Link>
+          )}
           
           <div className="mx-2"><BuscaGlobal /></div>
           <div className="mx-2"><ThemeToggle /></div>
@@ -170,13 +189,11 @@ export function Navbar() {
         </nav>
       </header>
 
-      {/* MOBILE (Simplificado) */}
+      {/* MOBILE */}
       <nav className="md:hidden fixed bottom-0 left-0 right-0 z-[900] h-16 bg-surface/90 backdrop-blur-lg border-t border-border flex items-center justify-around pb-safe transition-colors duration-300">
-        {/* Itens principais */}
         {navItems.map((item) => {
           const isActive = pathname === item.href;
           const Icon = item.icon;
-          // Esconde o Meu Top 10 no mobile para não quebrar
           if (item.name === 'Meu Top 10') return null; 
           
           return (
@@ -198,7 +215,6 @@ export function Navbar() {
           );
         })}
         
-        {/* Botão "Mais" */}
         <button
           onClick={() => setIsMobileMenuOpen(true)}
           className="flex flex-col items-center justify-center w-full h-full gap-1 transition-colors text-muted hover:text-text cursor-pointer"
@@ -208,7 +224,7 @@ export function Navbar() {
         </button>
       </nav>
 
-      {/* MENU MOBILE "MAIS" (Estilo Gaveta) */}
+      {/* MENU MOBILE "MAIS" */}
       {isMobileMenuOpen && mounted && createPortal(
         <div className="fixed inset-0 z-[9999] bg-black/60 backdrop-blur-sm" onClick={() => setIsMobileMenuOpen(false)}>
           <div 
@@ -226,6 +242,13 @@ export function Navbar() {
             <Link href="/top10" onClick={() => setIsMobileMenuOpen(false)} className="flex items-center gap-3 p-4 bg-bg rounded-xl text-text font-medium hover:bg-border transition-colors">
               <Trophy size={20} className="text-accent" /> Meu Top 10
             </Link>
+
+            {/* BOTÃO DE ADMIN NO MOBILE (SÓ APARECE PARA ADMINS) */}
+            {isAdmin && (
+              <Link href="/admin" onClick={() => setIsMobileMenuOpen(false)} className="flex items-center gap-3 p-4 bg-red-500/10 text-red-500 rounded-xl font-medium hover:bg-red-500/20 transition-colors">
+                <ShieldAlert size={20} /> Painel Admin
+              </Link>
+            )}
 
             <div className="flex items-center justify-between p-4 bg-bg rounded-xl">
               <span className="text-text font-medium">Tema</span>
@@ -258,7 +281,7 @@ export function Navbar() {
         document.body
       )}
 
-      {/* O PORTAL DO MENU DESKTOP (Mantido igual) */}
+      {/* O PORTAL DO MENU DESKTOP */}
       {isMenuOpen && mounted && createPortal(
         <div className="fixed inset-0 z-[9999] flex items-end justify-end p-4 pointer-events-none">
           <div className="absolute inset-0 bg-black/50 pointer-events-auto" onClick={() => setIsMenuOpen(false)} />
