@@ -30,6 +30,7 @@ export function BotaoPostarFeed({ animes, legenda, feedLiberado }: { animes: Ani
 
       const mediaUrls: string[] = [];
 
+      // Faz o upload das capas uma por uma
       for (const anime of animes) {
         const highResUrl = anime.coverUrl.replace('/large/', '/extraLarge/'); 
         const res = await fetch(`/api/proxy-image?url=${encodeURIComponent(highResUrl)}`);
@@ -43,12 +44,14 @@ export function BotaoPostarFeed({ animes, legenda, feedLiberado }: { animes: Ani
         mediaUrls.push(publicUrl);
       }
 
+      // Insere no banco
       const { error: postError } = await supabase.from('posts').insert({
         user_id: user.id,
         media_url: mediaUrls[0], 
         media_urls: mediaUrls,   
         media_type: 'image',
         caption: legenda || `Meu Top 10 de animes!`,
+        is_ranking: true, // <-- Marca como ranking
       });
 
       if (postError) throw new Error(`Falha ao salvar: ${postError.message}`);
