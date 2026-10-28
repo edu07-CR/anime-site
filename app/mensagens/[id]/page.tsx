@@ -2,7 +2,7 @@
 
 import { useState, useEffect, useRef } from 'react';
 import { createClient } from '@/lib/supabase/client';
-import { Loader2, Send, ArrowLeft, Lock } from 'lucide-react';
+import { Loader2, Send, ArrowLeft, Lock, Trash2 } from 'lucide-react';
 import Image from 'next/image';
 import Link from 'next/link';
 import { useRouter, useParams } from 'next/navigation';
@@ -31,8 +31,9 @@ export default function MensagensPage() {
   const [messages, setMessages] = useState<Message[]>([]);
   const [newMessage, setNewMessage] = useState('');
   const [loading, setLoading] = useState(true);
-  const [chatBloqueado, setChatBloqueado] = useState(false); // NOVO ESTADO
+  const [chatBloqueado, setChatBloqueado] = useState(false);
   const [myUserId, setMyUserId] = useState<string | null>(null);
+  const [isAdmin, setIsAdmin] = useState(false); // <-- NOVO ESTADO
   const [targetProfile, setTargetProfile] = useState<Profile | null>(null);
   
   const bottomRef = useRef<HTMLDivElement>(null);
@@ -43,15 +44,13 @@ export default function MensagensPage() {
     let channel: any;
 
     const init = async () => {
-      // 1. Verifica se o chat está bloqueado
       const { data: config } = await supabase.from('site_config').select('chat_enabled').single();
       if (config?.chat_enabled === false) {
         setChatBloqueado(true);
         setLoading(false);
-        return; // Para aqui, não carrega a conversa
+        return;
       }
 
-      // 2. Verifica usuário
       const { data: { user } } = await supabase.auth.getUser();
       if (!user) {
         router.push('/login');
@@ -59,7 +58,10 @@ export default function MensagensPage() {
       }
       setMyUserId(user.id);
 
-      // 3. Busca perfil do destinatário
+      // Verifica se o usuário é admin
+      const { data: myProfile } = await supabase.from('profiles').select('is_admin').eq('id', user.id).single();
+      if (myProfile?.is_admin) setIsAdmin(true);
+
       const { data: profile } = await supabase
         .from('profiles')
         .select('id, username, avatar_url, is_admin')
@@ -67,7 +69,6 @@ export default function MensagensPage() {
         .single();
       if (profile) setTargetProfile(profile);
 
-      // 4. Busca as mensagens
       const { data: msgs } = await supabase
         .from('direct_messages')
         .select('*')
@@ -77,34 +78,35 @@ export default function MensagensPage() {
       if (msgs) setMessages(msgs);
       setLoading(false);
       
-      // 5. Marca como lidas
       await supabase.from('direct_messages').update({ is_read: true }).eq('sender_id', targetUserId).eq('receiver_id', user.id).eq('is_read', false);
 
-      // 6. Realtime
-      channel = supabase
-        .channel('chat-privado')
-        .on(
-          'postgres_changes',
-          { event: 'INSERT', schema: 'public', table: 'direct_messages' },
-          (payload) => {
-            // Se bloqueou no meio da conversa, ignora
-            if (chatBloqueado) return;
+      const channelName = `chat-privado-${targetUserId}-${Date.now()}`;
+      channel = supabase.channel(channelName);
 
-            const newMsg = payload.new as Message;
-            if (
-              (newMsg.sender_id === myUserId && (newMsg as any).receiver_id === targetUserId) ||
-              (newMsg.sender_id === targetUserId && (newMsg as any).receiver_id === myUserId)
-            ) {
-              setMessages((prev) => [...prev, newMsg]);
-            }
+      channel.on(
+        'postgres_changes',
+        { event: 'INSERT', schema: 'public', table: 'direct_messages' },
+        (payload: any) => {
+          if (chatBloqueado) return;
+
+          const newMsg = payload.new as Message;
+          if (
+            (newMsg.sender_id === myUserId && (newMsg as any).receiver_id === targetUserId) ||
+            (newMsg.sender_id === targetUserId && (newMsg as any).receiver_id === myUserId)
+          ) {
+            setMessages((prev) => [...prev, newMsg]);
           }
-        )
-        .subscribe();
+        }
+      );
+
+      channel.subscribe();
     };
 
     init();
 
-    return () => { if (channel) supabase.removeChannel(channel); };
+    return () => {
+      if (channel) supabase.removeChannel(channel);
+    };
   }, [supabase, router, targetUserId, myUserId, chatBloqueado]);
 
   useEffect(() => {
@@ -125,12 +127,24 @@ export default function MensagensPage() {
     });
   };
 
+  // FUNÇÃO PARA DELETAR UMA MENSAGEM
+  const handleDeletarMensagem = async (id: string) => {
+    if (!confirm('Tem certeza que deseja apagar esta mensagem?')) return;
+
+    const { error } = await supabase.from('direct_messages').delete().eq('id', id);
+    
+    if (error) {
+      alert('Erro ao apagar a mensagem.');
+    } else {
+      setMessages((prev) => prev.filter((msg) => msg.id !== id));
+    }
+  };
+
   if (loading) {
     return <div className="flex justify-center items-center h-[50vh]"><Loader2 className="animate-spin text-accent" size={40} /></div>;
   }
 
-  // TELA DE BLOQUEIO
-    if (chatBloqueado) {
+  if (chatBloqueado) {
     return (
       <div className="flex flex-col items-center justify-center min-h-[70vh] text-center px-4">
         <div className="bg-surface border border-border p-6 rounded-full mb-6">
@@ -140,7 +154,6 @@ export default function MensagensPage() {
         <p className="text-muted max-w-md mx-auto mb-8">
           Estamos preparando a comunidade do AniVerse para você. As mensagens serão liberadas em breve!
         </p>
-        {/* LINK CORRIGIDO AQUI */}
         <Link href="/" className="bg-accent text-white font-bold px-8 py-3 rounded-lg hover:bg-accent/90 transition-colors shadow-lg shadow-accent/20">
           Voltar para os Lançamentos
         </Link>
@@ -152,7 +165,6 @@ export default function MensagensPage() {
     <div className="w-full max-w-3xl mx-auto py-8 flex flex-col h-[85vh]">
       <div className="bg-surface border border-border rounded-2xl flex flex-col flex-1 overflow-hidden shadow-lg">
         
-        {/* Header do Chat */}
         <div className="p-4 border-b border-border bg-bg/50 flex items-center gap-4">
           <Link href="/mensagens" className="text-muted hover:text-text transition-colors">
             <ArrowLeft size={20} />
@@ -176,7 +188,6 @@ export default function MensagensPage() {
           </Link>
         </div>
 
-        {/* Lista de Mensagens */}
         <div className="flex-1 overflow-y-auto p-4 space-y-4 bg-bg/20">
           {messages.length === 0 ? (
             <div className="flex flex-col items-center justify-center h-full text-muted">
@@ -186,17 +197,33 @@ export default function MensagensPage() {
           ) : (
             messages.map((msg) => {
               const isMe = msg.sender_id === myUserId;
+              // Pode deletar se for a própria mensagem OU se for admin
+              const podeDeletar = isMe || isAdmin;
+
               return (
-                <div key={msg.id} className={`flex ${isMe ? 'justify-end' : 'justify-start'}`}>
-                  <div className={`max-w-[70%] p-3 rounded-2xl text-sm ${
-                    isMe 
-                      ? 'bg-accent text-white rounded-tr-sm' 
-                      : 'bg-surface text-text rounded-tl-sm border border-border'
-                  }`}>
-                    {msg.content}
-                    <span className={`text-[10px] block mt-1 ${isMe ? 'text-white/70 text-right' : 'text-muted text-left'}`}>
-                      {formatDistanceToNow(new Date(msg.created_at), { addSuffix: true, locale: ptBR })}
-                    </span>
+                <div key={msg.id} className={`flex ${isMe ? 'justify-end' : 'justify-start'} group`}>
+                  <div className="flex items-center gap-2 max-w-[70%]">
+                    {/* Botão de lixeira (aparece no hover) */}
+                    {podeDeletar && (
+                      <button 
+                        onClick={() => handleDeletarMensagem(msg.id)}
+                        className={`opacity-0 group-hover:opacity-100 transition-opacity text-muted hover:text-red-500 ${isMe ? 'order-first' : 'order-last'}`}
+                        title="Apagar mensagem"
+                      >
+                        <Trash2 size={14} />
+                      </button>
+                    )}
+                    
+                    <div className={`p-3 rounded-2xl text-sm ${
+                      isMe 
+                        ? 'bg-accent text-white rounded-tr-sm' 
+                        : 'bg-surface text-text rounded-tl-sm border border-border'
+                    }`}>
+                      {msg.content}
+                      <span className={`text-[10px] block mt-1 ${isMe ? 'text-white/70 text-right' : 'text-muted text-left'}`}>
+                        {formatDistanceToNow(new Date(msg.created_at), { addSuffix: true, locale: ptBR })}
+                      </span>
+                    </div>
                   </div>
                 </div>
               );
@@ -205,7 +232,6 @@ export default function MensagensPage() {
           <div ref={bottomRef} />
         </div>
 
-        {/* Input de Mensagem */}
         <form onSubmit={handleEnviar} className="p-3 border-t border-border bg-surface flex gap-2">
           <input
             type="text"

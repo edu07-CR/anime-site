@@ -5,12 +5,13 @@ import Link from 'next/link';
 import Image from 'next/image';
 import { usePathname, useRouter } from 'next/navigation';
 import { createPortal } from 'react-dom';
-import { CalendarDays, Trophy, User, LogOut, Compass, MessageCircle, LayoutGrid, Search, Menu, X, ShieldAlert } from 'lucide-react';
+import { CalendarDays, Trophy, User, LogOut, Compass, MessageCircle, LayoutGrid, Search, Menu, X, ShieldAlert, MessageSquareWarning } from 'lucide-react';
 import { createClient } from '@/lib/supabase/client';
 import { User as SupabaseUser } from '@supabase/supabase-js';
 import { ThemeToggle } from './ThemeToggle';
 import { Notificacoes } from './Notificacoes';
 import { BuscaGlobal } from './BuscaGlobal';
+import { ModalFeedback } from './ModalFeedback'; // <-- IMPORT DO FEEDBACK
 
 const navItems = [
   { name: 'Lançamentos', href: '/', icon: CalendarDays },
@@ -28,9 +29,10 @@ export function Navbar() {
   const [user, setUser] = useState<SupabaseUser | null>(null);
   const [username, setUsername] = useState<string>('');
   const [avatarUrl, setAvatarUrl] = useState<string>('');
-  const [isAdmin, setIsAdmin] = useState(false); // <-- NOVO ESTADO
+  const [isAdmin, setIsAdmin] = useState(false);
   const [isMenuOpen, setIsMenuOpen] = useState(false);
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
+  const [feedbackAberto, setFeedbackAberto] = useState(false); // <-- ESTADO DO FEEDBACK
   const [mounted, setMounted] = useState(false);
   const [unreadCount, setUnreadCount] = useState(0);
 
@@ -46,12 +48,11 @@ export function Navbar() {
       setUser(prev => (prev?.id === user?.id ? prev : user));
       
       if (user) {
-        // Busca o perfil COMPLETO (incluindo is_admin)
         const { data } = await supabase.from('profiles').select('username, avatar_url, is_admin').eq('id', user.id).single();
         if (data) { 
           setUsername(data.username || 'Perfil'); 
           setAvatarUrl(data.avatar_url || ''); 
-          setIsAdmin(data.is_admin || false); // <-- SALVA O STATUS DE ADMIN
+          setIsAdmin(data.is_admin || false);
         }
 
         const fetchUnread = async () => {
@@ -139,7 +140,6 @@ export function Navbar() {
             <span className="hidden lg:block">Destaques</span>
           </Link>
 
-          {/* BOTÃO DE ADMIN NO DESKTOP (SÓ APARECE PARA ADMINS) */}
           {isAdmin && (
             <Link 
               href="/admin" 
@@ -243,12 +243,19 @@ export function Navbar() {
               <Trophy size={20} className="text-accent" /> Meu Top 10
             </Link>
 
-            {/* BOTÃO DE ADMIN NO MOBILE (SÓ APARECE PARA ADMINS) */}
             {isAdmin && (
               <Link href="/admin" onClick={() => setIsMobileMenuOpen(false)} className="flex items-center gap-3 p-4 bg-red-500/10 text-red-500 rounded-xl font-medium hover:bg-red-500/20 transition-colors">
                 <ShieldAlert size={20} /> Painel Admin
               </Link>
             )}
+
+            {/* BOTÃO DE FEEDBACK NO MOBILE */}
+            <button 
+              onClick={() => { setIsMobileMenuOpen(false); setFeedbackAberto(true); }} 
+              className="flex items-center gap-3 p-4 bg-bg rounded-xl text-text font-medium hover:bg-border transition-colors w-full text-left"
+            >
+              <MessageSquareWarning size={20} className="text-accent" /> Enviar Feedback / Suporte
+            </button>
 
             <div className="flex items-center justify-between p-4 bg-bg rounded-xl">
               <span className="text-text font-medium">Tema</span>
@@ -289,6 +296,12 @@ export function Navbar() {
             <Link href="/perfil" onClick={() => setIsMenuOpen(false)} className="px-4 py-3 text-sm text-text hover:bg-bg transition-colors block w-full text-left">
               Ver meu perfil
             </Link>
+            <button 
+              onClick={() => { setIsMenuOpen(false); setFeedbackAberto(true); }} 
+              className="px-4 py-3 text-sm text-text hover:bg-bg transition-colors flex items-center gap-2 text-left w-full cursor-pointer"
+            >
+              <MessageSquareWarning size={16} className="text-accent" /> Enviar Feedback
+            </button>
             <div className="h-[1px] bg-border my-1" />
             <button onClick={handleLogout} className="px-4 py-3 text-sm text-red-500 hover:bg-red-500/10 transition-colors flex items-center gap-2 text-left w-full cursor-pointer">
               <LogOut size={16} /> Sair da conta
@@ -297,6 +310,9 @@ export function Navbar() {
         </div>,
         document.body
       )}
+
+      {/* MODAL DE FEEDBACK */}
+      {feedbackAberto && <ModalFeedback onClose={() => setFeedbackAberto(false)} />}
     </>
   );
 }

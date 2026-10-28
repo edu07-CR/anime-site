@@ -2,10 +2,11 @@ import { createClient as createSupabaseClient } from '@supabase/supabase-js';
 import { createClient as createServerClient } from '@/lib/supabase/server';
 import { redirect } from 'next/navigation';
 import Link from 'next/link';
-import { ShieldAlert, Users, MessageSquare, ArrowLeft, Star } from 'lucide-react';
+import { ShieldAlert, Users, MessageSquare, ArrowLeft, Star, MessageSquareWarning } from 'lucide-react';
 import { BotaoNotificar } from '@/components/admin/BotaoNotificar';
 import { ToggleChat } from '@/components/admin/ToggleChat';
 import { ToggleFeed } from '@/components/admin/ToggleFeed';
+import { CardFeedback } from '@/components/admin/CardFeedback';
 
 export const dynamic = 'force-dynamic';
 
@@ -24,7 +25,7 @@ export default async function AdminPage() {
     { auth: { autoRefreshToken: false, persistSession: false } }
   );
 
-  // 1. Busca a configuração do site (chat e feed)
+  // 1. Busca a configuração do site
   const { data: config } = await supabaseAdmin.from('site_config').select('chat_enabled, feed_enabled').single();
   
   const chatAtivo = config?.chat_enabled ?? true;
@@ -33,6 +34,13 @@ export default async function AdminPage() {
   // 2. Busca usuários e estatísticas
   const { data: users } = await supabaseAdmin.from('profiles').select('id, username, avatar_url, created_at').order('created_at', { ascending: false });
   const { data: allStatus } = await supabaseAdmin.from('user_anime').select('user_id, status, rating');
+
+  // 3. Busca os feedbacks (só para admin)
+  const { data: feedbacks } = await supabaseAdmin
+    .from('feedbacks')
+    .select('*, profiles(username)')
+    .order('created_at', { ascending: false })
+    .limit(20);
 
   const usersData = (users || []).map(u => {
     const userStatus = (allStatus || []).filter(s => s.user_id === u.id);
@@ -59,9 +67,8 @@ export default async function AdminPage() {
         </Link>
       </div>
 
-      {/* BLOCO DE CONTROLE (CHAT E FEED) */}
+      {/* BLOCO DE CONTROLE */}
       <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mb-8">
-        {/* BLOCO DO CHAT */}
         <div className="bg-surface border border-border p-6 rounded-xl flex items-center justify-between">
           <div>
             <h2 className="text-xl font-bold text-text flex items-center gap-2">
@@ -74,7 +81,6 @@ export default async function AdminPage() {
           <ToggleChat inicial={chatAtivo} />
         </div>
 
-        {/* BLOCO DO FEED */}
         <div className="bg-surface border border-border p-6 rounded-xl flex items-center justify-between">
           <div>
             <h2 className="text-xl font-bold text-text flex items-center gap-2">
@@ -103,8 +109,9 @@ export default async function AdminPage() {
         </div>
       </div>
 
+      {/* TABELA DE USUÁRIOS */}
       <h2 className="text-xl font-bold text-text mb-4">Todos os Usuários</h2>
-      <div className="bg-surface border border-border rounded-xl overflow-hidden overflow-x-auto">
+      <div className="bg-surface border border-border rounded-xl overflow-hidden overflow-x-auto mb-10">
         <table className="w-full text-left text-sm whitespace-nowrap">
           <thead className="bg-bg border-b border-border text-muted">
             <tr>
@@ -136,6 +143,21 @@ export default async function AdminPage() {
             ))}
           </tbody>
         </table>
+      </div>
+
+      {/* SEÇÃO DE FEEDBACKS */}
+      <div className="flex items-center gap-2 mb-4">
+        <MessageSquareWarning className="text-accent" size={24} />
+        <h2 className="text-xl font-bold text-text">Feedbacks e Sugestões</h2>
+      </div>
+            <div className="bg-surface border border-border rounded-xl overflow-hidden">
+        {feedbacks?.length === 0 ? (
+          <p className="p-6 text-muted text-sm">Nenhum feedback recebido ainda.</p>
+        ) : (
+          feedbacks?.map((fb) => (
+            <CardFeedback key={fb.id} feedback={fb} /> // <-- USA O COMPONENTE AQUI
+          ))
+        )}
       </div>
     </div>
   );
