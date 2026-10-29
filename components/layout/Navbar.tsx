@@ -160,7 +160,6 @@ export function Navbar() {
             <button
               onClick={() => {
                 if (!user) {
-                  // FECHA O MENU ANTES DE ABRIR O LOGIN
                   setIsMenuOpen(false);
                   router.push('/login');
                 } else {
@@ -193,6 +192,25 @@ export function Navbar() {
                 </>
               )}
             </button>
+
+            {/* MENU DESKTOP (AGORA DENTRO DO BOTÃO, ALINHADO ABAIXO) */}
+            {isMenuOpen && user && (
+              <div className="absolute right-0 top-full mt-2 w-48 bg-surface border border-border rounded-xl shadow-2xl py-2 flex flex-col z-50">
+                <Link href="/perfil" onClick={() => setIsMenuOpen(false)} className="px-4 py-3 text-sm text-text hover:bg-bg transition-colors block w-full text-left">
+                  Ver meu perfil
+                </Link>
+                <button 
+                  onClick={() => { setIsMenuOpen(false); setFeedbackAberto(true); }} 
+                  className="px-4 py-3 text-sm text-text hover:bg-bg transition-colors flex items-center gap-2 text-left w-full cursor-pointer"
+                >
+                  <MessageSquareWarning size={16} className="text-accent" /> Enviar Feedback
+                </button>
+                <div className="h-[1px] bg-border my-1" />
+                <button onClick={handleLogout} className="px-4 py-3 text-sm text-red-500 hover:bg-red-500/10 transition-colors flex items-center gap-2 text-left w-full cursor-pointer">
+                  <LogOut size={16} /> Sair da conta
+                </button>
+              </div>
+            )}
           </div>
         </nav>
       </header>
@@ -290,29 +308,6 @@ export function Navbar() {
                 <User size={20} /> Entrar
               </Link>
             )}
-          </div>
-        </div>,
-        document.body
-      )}
-
-      {/* O PORTAL DO MENU DESKTOP */}
-      {isMenuOpen && mounted && user && createPortal( // SÓ ABRE SE O USUÁRIO ESTIVER LOGADO
-        <div className="fixed inset-0 z-[9999] flex items-end justify-end p-4 pointer-events-none">
-          <div className="absolute inset-0 bg-black/50 pointer-events-auto" onClick={() => setIsMenuOpen(false)} />
-          <div className="relative w-48 bg-surface border border-border rounded-lg shadow-2xl py-2 flex flex-col pointer-events-auto mb-16 mr-2">
-            <Link href="/perfil" onClick={() => setIsMenuOpen(false)} className="px-4 py-3 text-sm text-text hover:bg-bg transition-colors block w-full text-left">
-              Ver meu perfil
-            </Link>
-            <button 
-              onClick={() => { setIsMenuOpen(false); setFeedbackAberto(true); }} 
-              className="px-4 py-3 text-sm text-text hover:bg-bg transition-colors flex items-center gap-2 text-left w-full cursor-pointer"
-            >
-              <MessageSquareWarning size={16} className="text-accent" /> Enviar Feedback
-            </button>
-            <div className="h-[1px] bg-border my-1" />
-            <button onClick={handleLogout} className="px-4 py-3 text-sm text-red-500 hover:bg-red-500/10 transition-colors flex items-center gap-2 text-left w-full cursor-pointer">
-              <LogOut size={16} /> Sair da conta
-            </button>
           </div>
         </div>,
         document.body
