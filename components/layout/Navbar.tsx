@@ -11,7 +11,7 @@ import { User as SupabaseUser } from '@supabase/supabase-js';
 import { ThemeToggle } from './ThemeToggle';
 import { Notificacoes } from './Notificacoes';
 import { BuscaGlobal } from './BuscaGlobal';
-import { ModalFeedback } from './ModalFeedback'; // <-- IMPORT DO FEEDBACK
+import { ModalFeedback } from './ModalFeedback';
 
 const navItems = [
   { name: 'Lançamentos', href: '/', icon: CalendarDays },
@@ -32,7 +32,7 @@ export function Navbar() {
   const [isAdmin, setIsAdmin] = useState(false);
   const [isMenuOpen, setIsMenuOpen] = useState(false);
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
-  const [feedbackAberto, setFeedbackAberto] = useState(false); // <-- ESTADO DO FEEDBACK
+  const [feedbackAberto, setFeedbackAberto] = useState(false);
   const [mounted, setMounted] = useState(false);
   const [unreadCount, setUnreadCount] = useState(0);
 
@@ -158,7 +158,15 @@ export function Navbar() {
 
           <div className="relative">
             <button
-              onClick={() => setIsMenuOpen(!isMenuOpen)}
+              onClick={() => {
+                if (!user) {
+                  // FECHA O MENU ANTES DE ABRIR O LOGIN
+                  setIsMenuOpen(false);
+                  router.push('/login');
+                } else {
+                  setIsMenuOpen(!isMenuOpen);
+                }
+              }}
               className={`flex items-center gap-2 px-2 py-1.5 rounded-full border transition-colors cursor-pointer ${
                 pathname === '/perfil' || isMenuOpen 
                   ? 'bg-accent/10 border-accent text-accent' 
@@ -249,7 +257,6 @@ export function Navbar() {
               </Link>
             )}
 
-            {/* BOTÃO DE FEEDBACK NO MOBILE */}
             <button 
               onClick={() => { setIsMobileMenuOpen(false); setFeedbackAberto(true); }} 
               className="flex items-center gap-3 p-4 bg-bg rounded-xl text-text font-medium hover:bg-border transition-colors w-full text-left"
@@ -289,7 +296,7 @@ export function Navbar() {
       )}
 
       {/* O PORTAL DO MENU DESKTOP */}
-      {isMenuOpen && mounted && createPortal(
+      {isMenuOpen && mounted && user && createPortal( // SÓ ABRE SE O USUÁRIO ESTIVER LOGADO
         <div className="fixed inset-0 z-[9999] flex items-end justify-end p-4 pointer-events-none">
           <div className="absolute inset-0 bg-black/50 pointer-events-auto" onClick={() => setIsMenuOpen(false)} />
           <div className="relative w-48 bg-surface border border-border rounded-lg shadow-2xl py-2 flex flex-col pointer-events-auto mb-16 mr-2">

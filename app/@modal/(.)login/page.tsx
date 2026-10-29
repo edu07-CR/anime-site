@@ -135,7 +135,7 @@ export default function LoginModal() {
             {isLogin ? 'Bem-vindo de volta' : 'Crie sua conta'}
           </h1>
           <p className="text-muted text-sm">
-            {isLogin ? 'Entre para salvar seus animes e notas.' : 'Junte-se ao AniVerse e monte seu Top 5.'}
+            {isLogin ? 'Entre para salvar seus animes e notas.' : 'Junte-se ao AniVerse e monte seu Top 10.'}
           </p>
         </div>
 
@@ -177,7 +177,16 @@ export default function LoginModal() {
 
           {isLogin && (
             <div className="flex justify-end mt-[-8px]">
-              <Link href="/esqueceu-senha" className="text-sm text-accent hover:underline">
+              {/* CORREÇÃO: Fecha o modal e navega para a página de recuperação */}
+              <Link 
+                href="/esqueceu-senha" 
+                onClick={(e) => {
+                  e.preventDefault();
+                  router.back(); // Fecha o modal
+                  setTimeout(() => router.push('/esqueceu-senha'), 100); // Navega
+                }}
+                className="text-sm text-accent hover:underline"
+              >
                 Esqueceu a senha?
               </Link>
             </div>
