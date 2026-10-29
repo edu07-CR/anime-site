@@ -5,7 +5,7 @@ import { AcoesAnime } from '@/components/anime/AcoesAnime';
 import { BotaoTrailer } from '@/components/anime/BotaoTrailer';
 import { SecaoComentarios } from '@/components/anime/SecaoComentarios'; 
 import { EspacoAnuncio } from '@/components/layout/EspacoAnuncio';
-import { BotaoAssistir } from '@/components/anime/BotaoAssistir';
+import { OndeAssistir } from '@/components/anime/OndeAssistir';
 
 // ==========================================
 // FUNÇÕES DE TRADUÇÃO E BUSCA
@@ -170,6 +170,7 @@ export default async function AnimePage({ params }: { params: Promise<{ id: stri
 
             {/* INFORMAÇÕES + SINOPSE + COMENTÁRIOS */}
             <div className="w-full md:w-2/3 flex flex-col">
+              
               <div className="flex items-center gap-3 mb-2 text-accent text-sm font-semibold">
                 <span>{anime.seasonYear || 'Ano Desconhecido'}</span>
                 <span>•</span>
@@ -192,7 +193,7 @@ export default async function AnimePage({ params }: { params: Promise<{ id: stri
                 </div>
               </div>
 
-              <div className="flex flex-wrap gap-2 mb-6">
+              <div className="flex flex-wrap gap-2 mb-4">
                 {anime.genres?.map((genre: string) => (
                   <span key={genre} className="px-3 py-1 text-xs font-semibold bg-surface border border-border rounded-full text-muted">
                     {genre}
@@ -200,16 +201,16 @@ export default async function AnimePage({ params }: { params: Promise<{ id: stri
                 ))}
               </div>
 
-              {/* 1. BOTÃO ASSISTIR (TOPO, CENTRALIZADO) */}
-              <div className="mb-6">
-                <BotaoAssistir />
+              {/* AQUI ESTÁ A CORREÇÃO: Envolvendo os dois componentes numa div com gap pequeno */}
+              <div className="flex flex-col gap-5">
+                <AcoesAnime animeId={anime.id} />
+                <div className="-mt-4">
+                  <OndeAssistir tituloAnime={title} />
               </div>
-
-              {/* 2. NOTA E STATUS (DENTRO DO ACOESANIME, JÁ ORDENADOS) */}
-              <AcoesAnime animeId={anime.id} />
+                </div>
 
               {/* SINOPSE */}
-              <div className="mb-8">
+              <div className="mb-8 mt-6">
                 <h2 className="text-xl font-bold text-text mb-3">Sinopse</h2>
                 <p className="text-muted leading-relaxed text-sm md:text-base">
                   {sinopse}

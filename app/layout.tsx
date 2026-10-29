@@ -16,15 +16,15 @@ const geistMono = Geist_Mono({
 
 export const metadata: Metadata = {
   title: {
-    default: "AniVerse | Lançamentos de Animes e Top 5",
+    default: "AniVerse | Lançamentos de Animes e Top 10",
     template: "%s | AniVerse"
   },
-  description: "Acompanhe os lançamentos de animes da semana, crie seu Top 5 pessoal, converse no chat da comunidade e descubra os animes mais populares da temporada.",
-  keywords: ["anime", "lançamentos de anime", "top 5 animes", "calendário de animes", "animes da temporada", "chat de anime"],
+  description: "Acompanhe os lançamentos de animes da semana, crie seu Top 10 pessoal, converse no chat da comunidade e descubra os animes mais populares da temporada.",
+  keywords: ["anime", "lançamentos de anime", "top 10 animes", "calendário de animes", "animes da temporada", "chat de anime"],
   openGraph: {
     title: "AniVerse | Seu portal de animes",
-    description: "Acompanhe os lançamentos, monte seu Top 5 e converse com outros fãs de anime.",
-    url: "https://anime-site-2dhx.vercel.app", // Troque quando comprar o domínio
+    description: "Acompanhe os lançamentos, monte seu Top 10 e converse com outros fãs de anime.",
+    url: "https://aniverse.com.br", // Atualizei para o seu domínio novo
     siteName: "AniVerse",
     locale: "pt_BR",
     type: "website",
@@ -32,7 +32,11 @@ export const metadata: Metadata = {
   twitter: {
     card: "summary_large_image",
     title: "AniVerse | Seu portal de animes",
-    description: "Acompanhe os lançamentos, monte seu Top 5 e converse com outros fãs de anime.",
+    description: "Acompanhe os lançamentos, monte seu Top 10 e converse com outros fãs de anime.",
+  },
+  // ADICIONE ESTE BLOCO 'other' PARA AS VERIFICAÇÕES
+  other: {
+    'mylead-verification': '32db5d4576599a2b45af8d6facef1d9e',
   },
 };
 

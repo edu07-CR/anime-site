@@ -59,16 +59,17 @@ export function AcoesAnime({ animeId }: { animeId: number }) {
   if (loading) return <div className="h-[100px] flex items-center text-muted"><Loader2 className="animate-spin mr-2" /> Carregando...</div>;
 
   return (
-    <div className="flex flex-col gap-4 mb-8 relative w-full">
+    <div className="flex flex-col w-full relative">
       {!userId && (
         <div className="absolute inset-0 z-10 bg-bg/50 backdrop-blur-sm rounded-lg flex items-center justify-center border border-border">
           <span className="text-sm font-medium text-text">Faça login para salvar.</span>
         </div>
       )}
 
-      <div className={`transition-opacity duration-300 ${!userId ? 'opacity-30 pointer-events-none' : ''} flex flex-col gap-4 w-full`}>
+      {/* REDUZIDO O GAP DE 4 PARA 2 */}
+      <div className={`transition-opacity duration-300 ${!userId ? 'opacity-30 pointer-events-none' : ''} flex flex-col gap-2 w-full`}>
         
-        {/* 1. BLOCO DE NOTA (ALINHADO À ESQUERDA) */}
+        {/* 1. BLOCO DE NOTA */}
         <div className="flex items-center gap-3">
           <span className="text-sm font-medium text-muted">Sua nota:</span>
           <div className="flex items-center gap-1">
@@ -95,7 +96,7 @@ export function AcoesAnime({ animeId }: { animeId: number }) {
           {isSaving && <Loader2 className="animate-spin text-accent" size={16} />}
         </div>
 
-        {/* 2. GRUPO DE STATUS (ALINHADO À ESQUERDA) */}
+        {/* 2. GRUPO DE STATUS */}
         <div className="flex items-center gap-6 border-b border-border pb-2 w-fit">
           <button
             onClick={() => lidarComStatus('assistindo')}
