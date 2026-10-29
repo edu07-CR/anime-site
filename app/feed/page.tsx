@@ -3,7 +3,7 @@
 import { useState, useEffect, useOptimistic, startTransition } from 'react';
 import { useRouter } from 'next/navigation';
 import { createClient } from '@/lib/supabase/client';
-import { Loader2, Sparkles, Heart, MessageCircle, AlertTriangle, X, Trash2, Lock, PlusCircle, Share2 } from 'lucide-react';
+import { Loader2, Sparkles, Heart, MessageCircle, AlertTriangle, X, Trash2, PlusCircle, Share2 } from 'lucide-react';
 import Image from 'next/image';
 import Link from 'next/link';
 import { CarrosselImagens } from '@/components/feed/CarrosselImagens';
@@ -14,6 +14,7 @@ import { SeloAdmin } from '@/components/layout/SeloAdmin';
 import { TopCriadores } from '@/components/feed/TopCriadores';
 import { CriadorPost } from '@/components/feed/CriadorPost';
 import { EspacoAnuncio } from '@/components/layout/EspacoAnuncio';
+import { TelaBloqueio } from '@/components/layout/TelaBloqueio'; // <-- IMPORT
 
 const supabase = createClient();
 
@@ -162,16 +163,20 @@ export default function FeedPage() {
 
   if (feedBloqueado) {
     return (
-      <div className="flex flex-col items-center justify-center min-h-[70vh] text-center px-4">
-        <div className="bg-surface border border-border p-6 rounded-full mb-6">
-          <Lock size={48} className="text-muted" />
-        </div>
-        <h2 className="text-3xl font-bold text-text mb-4">Feed em Manutenção</h2>
-        <p className="text-muted max-w-md mx-auto mb-8">Estamos organizando a comunidade do AniVerse para você. O Feed será liberado em breve!</p>
-        <Link href="/" className="bg-accent text-white font-bold px-8 py-3 rounded-lg hover:bg-accent/90 transition-colors shadow-lg shadow-accent/20">
-          Voltar para os Lançamentos
-        </Link>
-      </div>
+      <TelaBloqueio 
+        titulo="Feed em Manutenção"
+        descricao="Estamos organizando a comunidade do AniVerse para você. O Feed será liberado em breve!"
+        spoiler={
+          <div className="text-sm text-text">
+            <p>Em breve você poderá:</p>
+            <ul className="list-disc list-inside text-left mt-2 space-y-1 text-muted">
+              <li>Postar seu Top 10 com temas personalizados.</li>
+              <li>Interagir com outros fãs no Feed.</li>
+              <li>Concorrer ao título de "Top Criador".</li>
+            </ul>
+          </div>
+        }
+      />
     );
   }
 
@@ -252,7 +257,6 @@ export default function FeedPage() {
                     </div>
 
                     <div className="flex items-center gap-1">
-                      {/* BOTÃO DE COMPARTILHAR */}
                       <button 
                         onClick={() => handleCompartilhar(post.id)}
                         className="text-muted hover:text-accent transition-colors p-1 cursor-pointer"
@@ -261,7 +265,6 @@ export default function FeedPage() {
                         <Share2 size={18} />
                       </button>
 
-                      {/* BOTÃO DE DELETAR */}
                       {(post.user_id === currentUserId || isAdmin) && (
                         <button 
                           onClick={() => handleDeletar(post)}

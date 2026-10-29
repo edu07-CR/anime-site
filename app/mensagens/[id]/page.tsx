@@ -2,13 +2,14 @@
 
 import { useState, useEffect, useRef } from 'react';
 import { createClient } from '@/lib/supabase/client';
-import { Loader2, Send, ArrowLeft, Lock, Trash2 } from 'lucide-react';
+import { Loader2, Send, ArrowLeft, Trash2 } from 'lucide-react';
 import Image from 'next/image';
 import Link from 'next/link';
 import { useRouter, useParams } from 'next/navigation';
 import { formatDistanceToNow } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
 import { SeloAdmin } from '@/components/layout/SeloAdmin';
+import { TelaBloqueio } from '@/components/layout/TelaBloqueio'; // <-- IMPORT
 
 interface Profile {
   id: string;
@@ -33,7 +34,7 @@ export default function MensagensPage() {
   const [loading, setLoading] = useState(true);
   const [chatBloqueado, setChatBloqueado] = useState(false);
   const [myUserId, setMyUserId] = useState<string | null>(null);
-  const [isAdmin, setIsAdmin] = useState(false); // <-- NOVO ESTADO
+  const [isAdmin, setIsAdmin] = useState(false);
   const [targetProfile, setTargetProfile] = useState<Profile | null>(null);
   
   const bottomRef = useRef<HTMLDivElement>(null);
@@ -58,7 +59,6 @@ export default function MensagensPage() {
       }
       setMyUserId(user.id);
 
-      // Verifica se o usuário é admin
       const { data: myProfile } = await supabase.from('profiles').select('is_admin').eq('id', user.id).single();
       if (myProfile?.is_admin) setIsAdmin(true);
 
@@ -127,7 +127,6 @@ export default function MensagensPage() {
     });
   };
 
-  // FUNÇÃO PARA DELETAR UMA MENSAGEM
   const handleDeletarMensagem = async (id: string) => {
     if (!confirm('Tem certeza que deseja apagar esta mensagem?')) return;
 
@@ -146,18 +145,15 @@ export default function MensagensPage() {
 
   if (chatBloqueado) {
     return (
-      <div className="flex flex-col items-center justify-center min-h-[70vh] text-center px-4">
-        <div className="bg-surface border border-border p-6 rounded-full mb-6">
-          <Lock size={48} className="text-muted" />
-        </div>
-        <h2 className="text-3xl font-bold text-text mb-4">Chat em Manutenção</h2>
-        <p className="text-muted max-w-md mx-auto mb-8">
-          Estamos preparando a comunidade do AniVerse para você. As mensagens serão liberadas em breve!
-        </p>
-        <Link href="/" className="bg-accent text-white font-bold px-8 py-3 rounded-lg hover:bg-accent/90 transition-colors shadow-lg shadow-accent/20">
-          Voltar para os Lançamentos
-        </Link>
-      </div>
+      <TelaBloqueio 
+        titulo="Chat em Manutenção"
+        descricao="Estamos preparando a comunidade do AniVerse para você. As mensagens serão liberadas em breve!"
+        spoiler={
+          <p className="text-sm text-muted text-left">
+            Em breve você poderá enviar mensagens privadas, criar grupos e compartilhar seus animes favoritos!
+          </p>
+        }
+      />
     );
   }
 
@@ -197,13 +193,11 @@ export default function MensagensPage() {
           ) : (
             messages.map((msg) => {
               const isMe = msg.sender_id === myUserId;
-              // Pode deletar se for a própria mensagem OU se for admin
               const podeDeletar = isMe || isAdmin;
 
               return (
                 <div key={msg.id} className={`flex ${isMe ? 'justify-end' : 'justify-start'} group`}>
                   <div className="flex items-center gap-2 max-w-[70%]">
-                    {/* Botão de lixeira (aparece no hover) */}
                     {podeDeletar && (
                       <button 
                         onClick={() => handleDeletarMensagem(msg.id)}
