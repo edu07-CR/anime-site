@@ -4,9 +4,11 @@ import { ArrowLeft, Star } from 'lucide-react';
 import { AcoesAnime } from '@/components/anime/AcoesAnime';
 import { BotaoTrailer } from '@/components/anime/BotaoTrailer';
 import { SecaoComentarios } from '@/components/anime/SecaoComentarios'; 
+import { EspacoAnuncio } from '@/components/layout/EspacoAnuncio';
+import { BotaoAssistir } from '@/components/anime/BotaoAssistir';
 
 // ==========================================
-// FUNÇÕES DE TRADUÇÃO E BUSCA (As mesmas que já usamos)
+// FUNÇÕES DE TRADUÇÃO E BUSCA
 // ==========================================
 async function traduzirComGroq(texto: string) {
   const API_KEY = process.env.GROQ_API_KEY; 
@@ -136,74 +138,107 @@ export default async function AnimePage({ params }: { params: Promise<{ id: stri
         <div className="absolute inset-0 bg-gradient-to-b from-transparent via-bg/80 to-bg" />
       </div>
 
-      <div className="max-w-6xl mx-auto px-4 md:px-6 pt-20 md:pt-32 pb-12 flex flex-col md:flex-row gap-8 md:gap-12">
+      <div className="max-w-7xl mx-auto px-4 md:px-6 pt-20 md:pt-32 pb-12 flex flex-col lg:flex-row gap-8">
         
-        {/* COLUNA ESQUERDA (Pôster + Trailer) */}
-        <div className="w-full md:w-1/3 flex-shrink-0 flex flex-col gap-6">
-          <div className="relative aspect-[2/3] w-full max-w-[300px] mx-auto md:mx-0 rounded-xl overflow-hidden border-2 border-border shadow-2xl shadow-black/50">
-            <Image 
-              src={anime.coverImage.extraLarge || anime.coverImage.large} 
-              alt={title} fill sizes="(max-width: 768px) 300px, 33vw" className="object-cover" priority 
-            />
-          </div>
-          <div className="w-full max-w-[300px] mx-auto md:mx-0">
-            <BotaoTrailer 
-              trailerId={anime.trailer?.site === 'youtube' ? anime.trailer.id : undefined} 
-              tituloAnime={title}
-            />
-          </div>
-        </div>
-
-        {/* COLUNA DIREITA (Informações + Sinopse) */}
-        <div className="w-full md:w-2/3 flex flex-col pt-0 md:pt-4">
+        {/* COLUNA ESQUERDA (CONTEÚDO PRINCIPAL) */}
+        <div className="flex-1 w-full">
           
-          <div className="flex items-center gap-3 mb-2 text-accent text-sm font-semibold">
-            <span>{anime.seasonYear || 'Ano Desconhecido'}</span>
-            <span>•</span>
-            <span>{anime.status === 'RELEASING' ? 'Em exibição' : 'Finalizado'}</span>
-            <span>•</span>
-            <span>{anime.episodes || '?'} Episódios</span>
-          </div>
-
-          <h1 className="text-3xl md:text-5xl font-bold text-text mb-4 leading-tight">
-            {title}
-          </h1>
-
-          <div className="flex items-center gap-4 mb-6">
-            <div className="flex items-center gap-1 text-yellow-400 font-bold text-lg bg-yellow-400/10 px-3 py-1 rounded-lg">
-              <Star size={20} fill="currentColor" />
-              {anime.averageScore ? (anime.averageScore / 10).toFixed(1) : 'N/A'}
-            </div>
-            <div className="text-muted text-sm">
-              Estúdio: <span className="text-text font-medium">{studio}</span>
-            </div>
-          </div>
-
-          <div className="flex flex-wrap gap-2 mb-8">
-            {anime.genres?.map((genre: string) => (
-              <span key={genre} className="px-3 py-1 text-xs font-semibold bg-surface border border-border rounded-full text-muted">
-                {genre}
-              </span>
-            ))}
-          </div>
-
-          <AcoesAnime animeId={anime.id} />
-
+          {/* ANÚNCIO NO TOPO */}
           <div className="mb-8">
-            <h2 className="text-xl font-bold text-text mb-3">Sinopse</h2>
-            <p className="text-muted leading-relaxed text-sm md:text-base">
-              {sinopse}
-            </p>
+            <EspacoAnuncio formato="banner" />
           </div>
 
-          <SecaoComentarios animeId={anime.id} />
+          <div className="flex flex-col md:flex-row gap-8 md:gap-12">
+            {/* PÔSTER + TRAILER + ANÚNCIO LATERAL ESQUERDO */}
+            <div className="w-full md:w-1/3 flex-shrink-0 flex flex-col gap-6">
+              <div className="relative aspect-[2/3] w-full max-w-[300px] mx-auto md:mx-0 rounded-xl overflow-hidden border-2 border-border shadow-2xl shadow-black/50">
+                <Image 
+                  src={anime.coverImage.extraLarge || anime.coverImage.large} 
+                  alt={title} fill sizes="(max-width: 768px) 300px, 25vw" className="object-cover" priority 
+                />
+              </div>
+              <div className="w-full max-w-[300px] mx-auto md:mx-0">
+                <BotaoTrailer 
+                  trailerId={anime.trailer?.site === 'youtube' ? anime.trailer.id : undefined} 
+                  tituloAnime={title}
+                />
+              </div>
+              <div className="w-full max-w-[300px] mx-auto md:mx-0 hidden md:block">
+                <EspacoAnuncio formato="vertical" />
+              </div>
+            </div>
 
-          <div className="mt-8 pt-6 border-t border-border">
+            {/* INFORMAÇÕES + SINOPSE + COMENTÁRIOS */}
+            <div className="w-full md:w-2/3 flex flex-col">
+              <div className="flex items-center gap-3 mb-2 text-accent text-sm font-semibold">
+                <span>{anime.seasonYear || 'Ano Desconhecido'}</span>
+                <span>•</span>
+                <span>{anime.status === 'RELEASING' ? 'Em exibição' : 'Finalizado'}</span>
+                <span>•</span>
+                <span>{anime.episodes || '?'} Episódios</span>
+              </div>
+
+              <h1 className="text-3xl md:text-5xl font-bold text-text mb-4 leading-tight">
+                {title}
+              </h1>
+
+              <div className="flex items-center gap-4 mb-6">
+                <div className="flex items-center gap-1 text-yellow-400 font-bold text-lg bg-yellow-400/10 px-3 py-1 rounded-lg">
+                  <Star size={20} fill="currentColor" />
+                  {anime.averageScore ? (anime.averageScore / 10).toFixed(1) : 'N/A'}
+                </div>
+                <div className="text-muted text-sm">
+                  Estúdio: <span className="text-text font-medium">{studio}</span>
+                </div>
+              </div>
+
+              <div className="flex flex-wrap gap-2 mb-6">
+                {anime.genres?.map((genre: string) => (
+                  <span key={genre} className="px-3 py-1 text-xs font-semibold bg-surface border border-border rounded-full text-muted">
+                    {genre}
+                  </span>
+                ))}
+              </div>
+
+              {/* 1. BOTÃO ASSISTIR (TOPO, CENTRALIZADO) */}
+              <div className="mb-6">
+                <BotaoAssistir />
+              </div>
+
+              {/* 2. NOTA E STATUS (DENTRO DO ACOESANIME, JÁ ORDENADOS) */}
+              <AcoesAnime animeId={anime.id} />
+
+              {/* SINOPSE */}
+              <div className="mb-8">
+                <h2 className="text-xl font-bold text-text mb-3">Sinopse</h2>
+                <p className="text-muted leading-relaxed text-sm md:text-base">
+                  {sinopse}
+                </p>
+              </div>
+
+              <SecaoComentarios animeId={anime.id} />
+            </div>
+          </div>
+
+          {/* ANÚNCIO NO FINAL */}
+          <div className="mt-10">
+            <EspacoAnuncio formato="banner" />
+          </div>
+
+          <div className="mt-6 pt-6 border-t border-border">
             <Link href="/" className="text-sm font-semibold text-accent hover:underline flex items-center gap-1">
               <ArrowLeft size={16} /> Voltar para os Lançamentos
             </Link>
           </div>
         </div>
+
+        {/* COLUNA DIREITA (ANÚNCIO LATERAL FINO) */}
+        <div className="hidden lg:block w-40 flex-shrink-0">
+          <div className="sticky top-24">
+            <EspacoAnuncio formato="vertical" />
+          </div>
+        </div>
+
       </div>
     </div>
   );

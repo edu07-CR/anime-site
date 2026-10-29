@@ -1,9 +1,9 @@
 'use client';
 
 import { useState, useEffect, useOptimistic, startTransition } from 'react';
-import { useRouter } from 'next/navigation'; // <-- IMPORT DO ROUTER
+import { useRouter } from 'next/navigation';
 import { createClient } from '@/lib/supabase/client';
-import { Loader2, Sparkles, Heart, MessageCircle, AlertTriangle, X, Trash2, Lock, PlusCircle } from 'lucide-react';
+import { Loader2, Sparkles, Heart, MessageCircle, AlertTriangle, X, Trash2, Lock, PlusCircle, Share2 } from 'lucide-react';
 import Image from 'next/image';
 import Link from 'next/link';
 import { CarrosselImagens } from '@/components/feed/CarrosselImagens';
@@ -13,6 +13,7 @@ import { deletarPost } from '@/app/actions/posts';
 import { SeloAdmin } from '@/components/layout/SeloAdmin';
 import { TopCriadores } from '@/components/feed/TopCriadores';
 import { CriadorPost } from '@/components/feed/CriadorPost';
+import { EspacoAnuncio } from '@/components/layout/EspacoAnuncio';
 
 const supabase = createClient();
 
@@ -33,7 +34,7 @@ interface Post {
 }
 
 export default function FeedPage() {
-  const router = useRouter(); // <-- INICIALIZA O ROUTER
+  const router = useRouter();
   const [posts, setPosts] = useState<Post[]>([]);
   const [loading, setLoading] = useState(true);
   const [feedBloqueado, setFeedBloqueado] = useState(false);
@@ -71,14 +72,12 @@ export default function FeedPage() {
 
   useEffect(() => {
     const checkAndFetch = async () => {
-      // 1. VERIFICA SE ESTÁ LOGADO
       const { data: { user } } = await supabase.auth.getUser();
       if (!user) {
         router.push('/login');
         return;
       }
 
-      // 2. Verifica se o feed está bloqueado
       const { data: config } = await supabase.from('site_config').select('feed_enabled').single();
       if (config?.feed_enabled === false) {
         setFeedBloqueado(true);
@@ -124,7 +123,7 @@ export default function FeedPage() {
     };
 
     checkAndFetch();
-  }, [supabase, router]); // <-- ADICIONA ROUTER NAS DEPENDÊNCIAS
+  }, [supabase, router]);
 
   const handleLike = (post: Post) => {
     startTransition(async () => {
@@ -149,6 +148,12 @@ export default function FeedPage() {
     } catch (error: any) {
       alert(error.message || 'Erro ao deletar o post.');
     }
+  };
+
+  const handleCompartilhar = (postId: string) => {
+    const url = `${window.location.origin}/feed/${postId}`;
+    navigator.clipboard.writeText(url);
+    alert('Link copiado para compartilhar no WhatsApp!');
   };
 
   if (loading) {
@@ -210,6 +215,10 @@ export default function FeedPage() {
             </button>
           </div>
 
+          <div className="mb-6">
+            <EspacoAnuncio formato="banner" />
+          </div>
+
           {optimisticLikes.length === 0 ? (
             <div className="text-center py-20 border-2 border-dashed border-border rounded-2xl">
               <p className="text-muted mb-4">O Feed está vazio. Seja o primeiro a postar!</p>
@@ -242,15 +251,27 @@ export default function FeedPage() {
                       </div>
                     </div>
 
-                    {(post.user_id === currentUserId || isAdmin) && (
+                    <div className="flex items-center gap-1">
+                      {/* BOTÃO DE COMPARTILHAR */}
                       <button 
-                        onClick={() => handleDeletar(post)}
-                        className="text-muted hover:text-red-500 transition-colors p-1 cursor-pointer"
-                        title="Deletar post"
+                        onClick={() => handleCompartilhar(post.id)}
+                        className="text-muted hover:text-accent transition-colors p-1 cursor-pointer"
+                        title="Compartilhar post"
                       >
-                        <Trash2 size={18} />
+                        <Share2 size={18} />
                       </button>
-                    )}
+
+                      {/* BOTÃO DE DELETAR */}
+                      {(post.user_id === currentUserId || isAdmin) && (
+                        <button 
+                          onClick={() => handleDeletar(post)}
+                          className="text-muted hover:text-red-500 transition-colors p-1 cursor-pointer"
+                          title="Deletar post"
+                        >
+                          <Trash2 size={18} />
+                        </button>
+                      )}
+                    </div>
                   </div>
 
                   {getImagensOrdenadas(post).length > 0 ? (
@@ -289,6 +310,9 @@ export default function FeedPage() {
 
         <div className="lg:col-span-4 w-full max-w-md mx-auto lg:mx-0 lg:sticky lg:top-24">
           <TopCriadores />
+          <div className="mt-6">
+            <EspacoAnuncio formato="vertical" />
+          </div>
         </div>
         
       </div>

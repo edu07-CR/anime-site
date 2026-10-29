@@ -5,6 +5,7 @@ import { SeletorDias } from '@/components/lancamentos/SeletorDias';
 import { GridAnimes } from '@/components/lancamentos/GridAnimes';
 import { AnimeData } from '@/components/lancamentos/CardAnime';
 import { AlertCircle } from 'lucide-react';
+import { EspacoAnuncio } from '@/components/layout/EspacoAnuncio'; // <-- IMPORT DO ANÚNCIO
 
 // Função para descobrir a temporada atual
 function getTemporadaAtual() {
@@ -54,7 +55,6 @@ export default function Home() {
       try {
         const res = await fetch(`/api/test-anilist?dia=${diaSelecionado}`);
         
-        // Se o servidor retornar erro (500, 503, etc), cai no catch
         if (!res.ok) {
           throw new Error("Falha na resposta do servidor");
         }
@@ -95,6 +95,11 @@ export default function Home() {
         </div>
       </header>
 
+      {/* ESPAÇO PARA ANÚNCIO NO TOPO */}
+      <div className="mb-6">
+        <EspacoAnuncio formato="banner" />
+      </div>
+
       <SeletorDias 
         diaSelecionado={diaSelecionado} 
         onChangeDia={setDiaSelecionado} 
@@ -116,6 +121,11 @@ export default function Home() {
         ) : (
           <GridAnimes animes={animes} isLoading={isLoading} />
         )}
+      </div>
+
+      {/* ESPAÇO PARA ANÚNCIO NO FINAL */}
+      <div className="mt-10">
+        <EspacoAnuncio formato="banner" />
       </div>
     </div>
   );

@@ -22,7 +22,8 @@ export default function EsqueceuSenhaPage() {
     // Garante que a URL será a correta (localhost ou produção)
     const origin = window.location.origin;
     const isLocalhost = origin.includes('localhost');
-    const baseUrl = isLocalhost ? origin : 'https://anime-site-2dhx.vercel.app';
+    // O domínio oficial agora é o aniverse.com.br
+    const baseUrl = isLocalhost ? origin : 'https://www.aniverse.com.br';
     const redirectUrl = `${baseUrl}/redefinir-senha`;
 
     const { error } = await supabase.auth.resetPasswordForEmail(email, {

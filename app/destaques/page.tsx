@@ -4,6 +4,7 @@ import { useState, useEffect, useRef } from 'react';
 import Link from 'next/link';
 import Image from 'next/image';
 import { Flame, Star, Loader2, Sparkles, TrendingUp, PlayCircle, ChevronRight, ChevronLeft } from 'lucide-react';
+import { EspacoAnuncio } from '@/components/layout/EspacoAnuncio'; // <-- IMPORT DO ANÚNCIO
 
 export default function DestaquesPage() {
   const [data, setData] = useState<{ doDia: any[], daSemana: any[], daTemporada: any[] } | null>(null);
@@ -42,6 +43,11 @@ export default function DestaquesPage() {
   return (
     <div className="w-full pb-12">
       
+      {/* ESPAÇO PARA ANÚNCIO NO TOPO */}
+      <div className="mb-8">
+        <EspacoAnuncio formato="banner" />
+      </div>
+
       {/* 1. CARROSSEL DE DESTAQUES (EM ALTA) */}
       <section className="mb-12">
         <div className="flex items-center justify-between mb-4">
@@ -100,7 +106,6 @@ export default function DestaquesPage() {
           <h2 className="text-2xl font-bold text-text">Top 10 Lançamentos da Semana</h2>
         </div>
         
-        {/* O Grid Mágico: 2 colunas, preenchendo na vertical */}
         <div className="grid grid-cols-1 md:grid-cols-2 md:grid-flow-col md:grid-rows-5 gap-3">
           {data?.daSemana.slice(0, 10).map((anime, index) => (
             <Link 
@@ -108,17 +113,14 @@ export default function DestaquesPage() {
               href={`/anime/${anime.id}`} 
               className="flex items-center gap-3 bg-surface border border-border p-2 md:p-3 rounded-xl hover:border-accent transition-colors group"
             >
-              {/* Número Gigante */}
               <div className="text-4xl md:text-5xl font-black text-border group-hover:text-accent/50 transition-colors w-10 text-center flex-shrink-0">
                 {index + 1}
               </div>
 
-              {/* Capa */}
               <div className="relative w-12 h-16 md:w-14 md:h-20 flex-shrink-0 rounded-md overflow-hidden">
                 <Image src={anime.coverUrl} alt={anime.title} fill className="object-cover" />
               </div>
 
-              {/* Informações */}
               <div className="flex flex-col flex-1 min-w-0">
                 <h3 className="text-text font-bold text-sm line-clamp-2 group-hover:text-accent transition-colors mb-1">{anime.title}</h3>
                 <p className="text-muted text-xs flex items-center gap-2">
@@ -168,6 +170,12 @@ export default function DestaquesPage() {
           ))}
         </div>
       </section>
+
+      {/* ESPAÇO PARA ANÚNCIO NO FINAL */}
+      <div className="mt-10">
+        <EspacoAnuncio formato="banner" />
+      </div>
+
     </div>
   );
 }
