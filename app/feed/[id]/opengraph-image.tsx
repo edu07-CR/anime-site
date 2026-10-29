@@ -18,7 +18,7 @@ export default async function Image({ params }: { params: { id: string } }) {
 
   const capa = post?.media_urls?.[0] || 'https://aniverse.com.br/fallback.jpg';
   const legenda = post?.caption || 'Confira este post no AniVerse!';
-  const autor = post?.profiles?.username || 'AniVerse';
+  const autor = post?.profiles?.[0]?.username || 'AniVerse';
 
   return new ImageResponse(
     (
