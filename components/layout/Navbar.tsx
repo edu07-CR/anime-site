@@ -5,7 +5,7 @@ import Link from 'next/link';
 import Image from 'next/image';
 import { usePathname, useRouter } from 'next/navigation';
 import { createPortal } from 'react-dom';
-import { CalendarDays, Trophy, User, LogOut, Compass, MessageCircle, LayoutGrid, Search, Menu, X, ShieldAlert, MessageSquareWarning } from 'lucide-react';
+import { CalendarDays, Trophy, User, LogOut, Compass, MessageCircle, LayoutGrid, Menu, X, ShieldAlert, MessageSquareWarning } from 'lucide-react';
 import { createClient } from '@/lib/supabase/client';
 import { User as SupabaseUser } from '@supabase/supabase-js';
 import { ThemeToggle } from './ThemeToggle';
@@ -102,12 +102,20 @@ export function Navbar() {
     <>
       {/* DESKTOP */}
       <header className="hidden md:flex sticky top-0 z-50 w-full h-16 bg-surface/80 backdrop-blur-md border-b border-border items-center justify-between px-6 transition-colors duration-300">
-        <Link href="/" className="flex items-center gap-2 group cursor-pointer">
-          <div className="flex items-center justify-center w-8 h-8 rounded-full border-2 border-accent group-hover:bg-accent/10 transition-colors">
-            <span className="text-accent font-black text-lg leading-none mt-[1px]">A</span>
+        <Link href="/" className="flex items-center group cursor-pointer">
+          {/* LOGO (que contém o "A") */}
+          <div className="relative w-9 h-9 group-hover:scale-105 transition-transform flex-shrink-0">
+            <Image 
+              src="/icon.svg" 
+              alt="Logo AniVerse" 
+              fill 
+              className="object-contain" 
+            />
           </div>
-          <span className="text-xl font-bold tracking-wider text-text">
-            <span className="text-accent">ANI</span><span>VERSE</span>
+          
+          {/* TEXTO (NIVERSE) - O "A" já está na logo */}
+          <span className="text-xl font-bold tracking-wider text-text ml-0">
+            <span className="text-accent">NI</span><span>VERSE</span>
           </span>
         </Link>
 
@@ -193,7 +201,7 @@ export function Navbar() {
               )}
             </button>
 
-            {/* MENU DESKTOP (AGORA DENTRO DO BOTÃO, ALINHADO ABAIXO) */}
+            {/* MENU DESKTOP */}
             {isMenuOpen && user && (
               <div className="absolute right-0 top-full mt-2 w-48 bg-surface border border-border rounded-xl shadow-2xl py-2 flex flex-col z-50">
                 <Link href="/perfil" onClick={() => setIsMenuOpen(false)} className="px-4 py-3 text-sm text-text hover:bg-bg transition-colors block w-full text-left">

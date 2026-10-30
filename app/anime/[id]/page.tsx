@@ -6,6 +6,7 @@ import { BotaoTrailer } from '@/components/anime/BotaoTrailer';
 import { SecaoComentarios } from '@/components/anime/SecaoComentarios'; 
 import { EspacoAnuncio } from '@/components/layout/EspacoAnuncio';
 import { OndeAssistir } from '@/components/anime/OndeAssistir';
+import { BannerGeek } from '@/components/anime/BannerGeek'; // <-- IMPORT DO BANNER GEEK
 
 // ==========================================
 // FUNÇÕES DE TRADUÇÃO E BUSCA
@@ -201,13 +202,15 @@ export default async function AnimePage({ params }: { params: Promise<{ id: stri
                 ))}
               </div>
 
-              {/* AQUI ESTÁ A CORREÇÃO: Envolvendo os dois componentes numa div com gap pequeno */}
               <div className="flex flex-col gap-5">
                 <AcoesAnime animeId={anime.id} />
                 <div className="-mt-4">
                   <OndeAssistir tituloAnime={title} />
-              </div>
                 </div>
+                
+                {/* BANNER DE PRODUTOS GEEK */}
+                <BannerGeek tituloAnime={title} />
+              </div>
 
               {/* SINOPSE */}
               <div className="mb-8 mt-6">

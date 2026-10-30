@@ -34,10 +34,8 @@ export const metadata: Metadata = {
     title: "AniVerse | Seu portal de animes",
     description: "Acompanhe os lançamentos, monte seu Top 10 e converse com outros fãs de anime.",
   },
-  // ADICIONE AS VERIFICAÇÕES AQUI
   other: {
     'mylead-verification': '32db5d4576599a2b45af8d6facef1d9e',
-    'lomadee': '2324685',
   },
 };
 
