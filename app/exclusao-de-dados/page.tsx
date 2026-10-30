@@ -23,7 +23,7 @@ export default function ExclusaoDadosPage() {
             <Trash2 className="text-red-400" size={20} /> Opção 1: Exclusão Direta no Site (Recomendado)
           </h2>
           <p className="text-muted mb-4">
-            A forma mais rápida de excluir tudo é fazer login no site e ir até a página de configurações do seu perfil. Lá, você encontrará o botão <strong>"Deletar Conta"</strong>. Ao confirmar, todos os seus dados (animes salvos, Top 5, comentários, curtidas e notificações) serão apagados imediatamente dos nossos servidores.
+            A forma mais rápida de excluir tudo é fazer login no site e ir até a página de configurações do seu perfil. Lá, você encontrará o botão <strong>"Deletar Conta"</strong>. Ao confirmar, todos os seus dados (animes salvos, Top 10, comentários, curtidas e notificações) serão apagados imediatamente dos nossos servidores.
           </p>
           <Link 
             href="/perfil/configuracoes" 
@@ -39,7 +39,7 @@ export default function ExclusaoDadosPage() {
             Se você não consegue acessar a sua conta, pode solicitar a exclusão dos seus dados entrando em contato conosco por e-mail. Responderemos em até 7 dias úteis para confirmar a exclusão.
           </p>
           <p className="text-muted">
-            Envie um e-mail para: <a href="mailto:contato@aniverse.com" className="text-accent hover:underline">contato@aniverse.com</a>
+            Envie um e-mail para: <a href="mailto:carlos.eduardo.c.r@outlook.com" className="text-accent hover:underline">carlos.eduardo.c.r@outlook.com</a>
           </p>
         </div>
 
@@ -48,7 +48,7 @@ export default function ExclusaoDadosPage() {
           <ul className="list-disc pl-5 text-muted space-y-2">
             <li>Seu perfil público (nome de usuário, avatar e bio).</li>
             <li>Sua lista de animes (Assistindo, Quero Ver, Concluído).</li>
-            <li>Seu ranking do Top 5.</li>
+            <li>Seu ranking do Top 10.</li>
             <li>Suas curtidas, comentários e mensagens no chat.</li>
             <li>Seu histórico de notificações.</li>
           </ul>

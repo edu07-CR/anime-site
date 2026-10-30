@@ -1,54 +1,50 @@
 import Link from 'next/link';
-import { ArrowLeft, ShieldCheck } from 'lucide-react';
+import { ArrowLeft } from 'lucide-react';
 
 export default function PrivacidadePage() {
   return (
-    <div className="w-full max-w-3xl mx-auto py-8">
-      <Link href="/" className="inline-flex items-center gap-2 text-muted hover:text-accent transition-colors mb-8 text-sm font-medium">
+    <div className="w-full max-w-4xl mx-auto py-12 px-4">
+      <Link href="/" className="text-sm font-semibold text-accent hover:underline flex items-center gap-1 mb-8">
         <ArrowLeft size={16} /> Voltar para a Home
       </Link>
 
-      <div className="flex items-center gap-3 mb-6">
-        <ShieldCheck className="text-accent" size={32} />
-        <h1 className="text-3xl font-bold text-text">Política de Privacidade</h1>
-      </div>
+      <h1 className="text-3xl font-bold text-text mb-6">Política de Privacidade</h1>
+      <p className="text-muted mb-4">Última atualização: 30 de Outubro de 2026</p>
 
-      <div className="prose prose-invert max-w-none text-muted space-y-6">
-        <p className="text-sm">Última atualização: {new Date().toLocaleDateString('pt-BR')}</p>
-
+      <div className="space-y-6 text-muted leading-relaxed">
         <section>
-          <h2 className="text-xl font-bold text-text mb-2">1. Informações que Coletamos</h2>
-          <p>
-            O AniVerse coleta apenas as informações necessárias para o funcionamento do site. Ao criar uma conta, armazenamos seu e-mail, nome de usuário e senha criptografada (via Supabase). Também armazenamos suas preferências, como animes marcados e notas dadas.
-          </p>
+          <h2 className="text-xl font-bold text-text mb-2">1. Quais dados coletamos?</h2>
+          <p>Ao criar uma conta no AniVerse, coletamos: <strong>Nome de usuário, endereço de e-mail, senha (criptografada) e avatar escolhido</strong>. Também coletamos dados de uso (páginas visitadas, animes marcados como "Assistindo", notas e interações no Feed e Chat) para personalizar sua experiência.</p>
         </section>
 
         <section>
-          <h2 className="text-xl font-bold text-text mb-2">2. Como Usamos suas Informações</h2>
-          <p>
-            Usamos seus dados para personalizar sua experiência (ex: mostrar suas listas de animes), salvar seu Top 5 e permitir que você participe da comunidade (comentários). Nós não vendemos seus dados para terceiros.
-          </p>
+          <h2 className="text-xl font-bold text-text mb-2">2. Como usamos seus dados?</h2>
+          <p>Seus dados são usados para: (a) permitir o login e a gestão da sua conta; (b) salvar suas listas, notas e preferências; (c) exibir seu perfil público para outros usuários; (d) enviar notificações sobre novos episódios dos animes que você acompanha.</p>
         </section>
 
         <section>
-          <h2 className="text-xl font-bold text-text mb-2">3. Cookies e Anúncios</h2>
-          <p>
-            Utilizamos cookies para manter sua sessão ativa. Além disso, o AniVerse pode exibir anúncios de redes parceiras (como a Monetag). Essas redes podem usar cookies para exibir anúncios relevantes com base em suas visitas anteriores.
-          </p>
+          <h2 className="text-xl font-bold text-text mb-2">3. Compartilhamento com Terceiros</h2>
+          <p>Não vendemos seus dados. No entanto, usamos serviços de terceiros que podem processar dados: <strong>Supabase</strong> (armazenamento do banco de dados e autenticação), <strong>Vercel</strong> (hospedagem) e <strong>AniList/Jikan</strong> (APIs públicas de dados de animes). No futuro, podemos usar redes de anúncios (como Google AdSense) que utilizam cookies para personalizar anúncios.</p>
         </section>
 
         <section>
-          <h2 className="text-xl font-bold text-text mb-2">4. Seus Direitos</h2>
-          <p>
-            Você pode, a qualquer momento, excluir sua conta diretamente nas configurações do seu perfil. Ao fazer isso, todos os seus dados (listas, notas e perfil) são permanentemente apagados dos nossos servidores.
-          </p>
+          <h2 className="text-xl font-bold text-text mb-2">4. Cookies</h2>
+          <p>Utilizamos cookies para manter sua sessão ativa e para fins de análise de tráfego. Você pode desativar os cookies no seu navegador, mas isso pode afetar o funcionamento do site.</p>
         </section>
 
         <section>
-          <h2 className="text-xl font-bold text-text mb-2">5. Contato</h2>
-          <p>
-            Se tiver dúvidas sobre esta política, entre em contato pelo e-mail: <strong>contato@aniverse.com</strong> (substitua pelo seu e-mail real).
-          </p>
+          <h2 className="text-xl font-bold text-text mb-2">5. Seus Direitos (LGPD)</h2>
+          <p>De acordo com a LGPD, você tem direito a: acessar, corrigir ou excluir seus dados pessoais a qualquer momento. Para exercer esses direitos, entre em contato pelo e-mail: <strong>carlos.eduardo.c.r@outlook.com</strong>.</p>
+        </section>
+
+        <section>
+          <h2 className="text-xl font-bold text-text mb-2">6. Exclusão de Conta</h2>
+          <p>Você pode solicitar a exclusão da sua conta a qualquer momento através da página de configurações do seu perfil. Ao excluir a conta, todos os seus dados (listas, posts, mensagens) serão permanentemente removidos dos nossos servidores.</p>
+        </section>
+
+        <section>
+          <h2 className="text-xl font-bold text-text mb-2">7. Foro e Jurisdição</h2>
+          <p>Esta política é regida pelas leis da República Federativa do Brasil. Quaisquer disputas serão resolvidas no foro da comarca de São Paulo/SP.</p>
         </section>
       </div>
     </div>
