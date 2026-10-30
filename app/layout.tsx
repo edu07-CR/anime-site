@@ -24,7 +24,7 @@ export const metadata: Metadata = {
   openGraph: {
     title: "AniVerse | Seu portal de animes",
     description: "Acompanhe os lançamentos, monte seu Top 10 e converse com outros fãs de anime.",
-    url: "https://aniverse.com.br", 
+    url: "https://aniverse.com.br",
     siteName: "AniVerse",
     locale: "pt_BR",
     type: "website",
@@ -34,10 +34,10 @@ export const metadata: Metadata = {
     title: "AniVerse | Seu portal de animes",
     description: "Acompanhe os lançamentos, monte seu Top 10 e converse com outros fãs de anime.",
   },
-  // ADICIONE ESTE BLOCO 'other' COM AS DUAS VERIFICAÇÕES
+  // ADICIONE AS VERIFICAÇÕES AQUI
   other: {
     'mylead-verification': '32db5d4576599a2b45af8d6facef1d9e',
-    'mitgo-verification': '7c093888-86ce-49c4-8ac9-2671e3adac76',
+    'lomadee': '2324685',
   },
 };
 
