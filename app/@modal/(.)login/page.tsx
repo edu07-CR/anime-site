@@ -1,9 +1,9 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import { createClient } from '@/lib/supabase/client';
-import { Mail, Lock, Loader2, Eye, EyeOff, User, X } from 'lucide-react';
+import { Mail, Lock, Loader2, Eye, EyeOff, User, X, CheckCircle2, AlertCircle } from 'lucide-react';
 import { SeletorAvatares } from '@/components/perfil/SelecionarAvatar';
 import Link from 'next/link';
 
@@ -18,11 +18,47 @@ export default function LoginModal() {
   const [loading, setLoading] = useState(false);
   const [socialLoading, setSocialLoading] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
+  const [usernameStatus, setUsernameStatus] = useState<'idle' | 'checking' | 'available' | 'taken'>('idle');
   
   const router = useRouter();
   const supabase = createClient();
 
   const dominiosPermitidos = ['gmail.com', 'hotmail.com', 'outlook.com', 'yahoo.com', 'icloud.com', 'bol.com.br', 'uol.com.br'];
+
+  useEffect(() => {
+    if (isLogin) {
+      setUsernameStatus('idle');
+      return;
+    }
+
+    if (username.trim().length < 3) {
+      setUsernameStatus('idle');
+      return;
+    }
+
+    setUsernameStatus('checking');
+
+    const timer = setTimeout(async () => {
+      const { data, error } = await supabase
+        .from('profiles')
+        .select('username')
+        .ilike('username', username.trim())
+        .maybeSingle();
+
+      if (error) {
+        setUsernameStatus('idle');
+        return;
+      }
+
+      if (data) {
+        setUsernameStatus('taken');
+      } else {
+        setUsernameStatus('available');
+      }
+    }, 500);
+
+    return () => clearTimeout(timer);
+  }, [username, isLogin, supabase]);
 
   const handleAuth = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -65,6 +101,11 @@ export default function LoginModal() {
         setLoading(false);
         return;
       }
+      if (usernameStatus === 'taken') {
+        setError('Este nome de usuário já está em uso. Escolha outro.');
+        setLoading(false);
+        return;
+      }
       if (!avatarUrl) {
         setError('Escolha um avatar para continuar.');
         setLoading(false);
@@ -80,7 +121,7 @@ export default function LoginModal() {
         const { data: authData, error: authError } = await supabase.auth.signUp({ 
           email, 
           password, 
-          options: { data: { username, avatar_url: avatarUrl } } 
+          options: { data: { username: username.trim().toLowerCase(), avatar_url: avatarUrl } } 
         });
         if (authError) throw authError;
 
@@ -118,10 +159,18 @@ export default function LoginModal() {
     }
   };
 
+  const isSubmitDisabled = loading || (!isLogin && (username.trim().length < 3 || usernameStatus === 'taken' || usernameStatus === 'checking' || !avatarUrl));
+
   return (
-    <div className="fixed inset-0 z-[100] flex items-center justify-center bg-black/60 backdrop-blur-md p-4">
+    // MUDANÇA: Fundo apenas com o gradiente sutil, sem o grid xadrez
+    <div key={isLogin ? 'login' : 'cadastro'} className="fixed inset-0 z-[100] flex items-center justify-center bg-bg/80 backdrop-blur-md p-4">
       
-      <div className="w-full max-w-md bg-surface/95 border border-border rounded-2xl p-8 shadow-2xl relative max-h-[90vh] overflow-y-auto">
+      {/* FUNDO ESTILIZADO (Apenas Gradiente, sem grid) */}
+      <div className="absolute inset-0 z-0 opacity-20 pointer-events-none">
+        <div className="absolute inset-0 bg-gradient-to-br from-accent/20 via-transparent to-accent/10" />
+      </div>
+
+      <div className="w-full max-w-md bg-surface/80 backdrop-blur-xl border border-border rounded-2xl p-8 shadow-2xl relative z-10 max-h-[90vh] overflow-y-auto">
         
         <button 
           onClick={() => router.back()} 
@@ -147,12 +196,37 @@ export default function LoginModal() {
 
         <form onSubmit={handleAuth} className="flex flex-col gap-4">
           {!isLogin && (
-            <div className="relative">
-              <User className="absolute left-3 top-1/2 -translate-y-1/2 text-muted" size={18} />
-              <input
-                type="text" placeholder="Seu nome de usuário" value={username} onChange={(e) => setUsername(e.target.value)} required={!isLogin}
-                className="w-full bg-bg/50 border border-border text-text rounded-lg py-3 pl-10 pr-4 focus:outline-none focus:border-accent focus:ring-1 focus:ring-accent transition-all"
-              />
+            <div className="flex flex-col gap-1">
+              <div className="relative">
+                <User className={`absolute left-3 top-1/2 -translate-y-1/2 ${
+                  usernameStatus === 'taken' ? 'text-red-500' : 
+                  usernameStatus === 'available' ? 'text-green-500' : 'text-muted'
+                }`} size={18} />
+                <input
+                  type="text" 
+                  placeholder="Seu nome de usuário (único)" 
+                  value={username} 
+                  onChange={(e) => setUsername(e.target.value)} 
+                  required={!isLogin}
+                  className={`w-full bg-transparent border rounded-lg py-3 pl-10 pr-10 focus:outline-none transition-all ${
+                    usernameStatus === 'taken' ? 'border-red-500 focus:ring-red-500' : 
+                    usernameStatus === 'available' ? 'border-green-500 focus:ring-green-500' : 
+                    'border-border focus:border-accent focus:ring-accent'
+                  }`}
+                />
+                <div className="absolute right-3 top-1/2 -translate-y-1/2">
+                  {usernameStatus === 'checking' && <Loader2 className="animate-spin text-muted" size={18} />}
+                  {usernameStatus === 'available' && <CheckCircle2 className="text-green-500" size={18} />}
+                  {usernameStatus === 'taken' && <AlertCircle className="text-red-500" size={18} />}
+                </div>
+              </div>
+              
+              {usernameStatus === 'taken' && (
+                <span className="text-xs text-red-500 font-medium ml-1">Este nome já está em uso. Escolha outro.</span>
+              )}
+              {usernameStatus === 'available' && (
+                <span className="text-xs text-green-500 font-medium ml-1">Nome de usuário disponível!</span>
+              )}
             </div>
           )}
 
@@ -160,7 +234,7 @@ export default function LoginModal() {
             <Mail className="absolute left-3 top-1/2 -translate-y-1/2 text-muted" size={18} />
             <input
               type="email" placeholder="Seu e-mail" value={email} onChange={(e) => setEmail(e.target.value)} required
-              className="w-full bg-bg/50 border border-border text-text rounded-lg py-3 pl-10 pr-4 focus:outline-none focus:border-accent focus:ring-1 focus:ring-accent transition-all"
+              className="w-full bg-transparent border border-border text-text rounded-lg py-3 pl-10 pr-4 focus:outline-none focus:border-accent focus:ring-1 focus:ring-accent transition-all"
             />
           </div>
 
@@ -168,7 +242,7 @@ export default function LoginModal() {
             <Lock className="absolute left-3 top-1/2 -translate-y-1/2 text-muted" size={18} />
             <input
               type={showPassword ? 'text' : 'password'} placeholder="Sua senha" value={password} onChange={(e) => setPassword(e.target.value)} required
-              className="w-full bg-bg/50 border border-border text-text rounded-lg py-3 pl-10 pr-12 focus:outline-none focus:border-accent focus:ring-1 focus:ring-accent transition-all"
+              className="w-full bg-transparent border border-border text-text rounded-lg py-3 pl-10 pr-12 focus:outline-none focus:border-accent focus:ring-1 focus:ring-accent transition-all"
             />
             <button type="button" onClick={() => setShowPassword(!showPassword)} className="absolute right-3 top-1/2 -translate-y-1/2 text-muted hover:text-accent transition-colors cursor-pointer">
               {showPassword ? <EyeOff size={18} /> : <Eye size={18} />}
@@ -177,13 +251,12 @@ export default function LoginModal() {
 
           {isLogin && (
             <div className="flex justify-end mt-[-8px]">
-              {/* CORREÇÃO: Fecha o modal e navega para a página de recuperação */}
               <Link 
                 href="/esqueceu-senha" 
                 onClick={(e) => {
                   e.preventDefault();
-                  router.back(); // Fecha o modal
-                  setTimeout(() => router.push('/esqueceu-senha'), 100); // Navega
+                  router.back();
+                  setTimeout(() => router.push('/esqueceu-senha'), 100);
                 }}
                 className="text-sm text-accent hover:underline"
               >
@@ -199,7 +272,11 @@ export default function LoginModal() {
             </div>
           )}
 
-          <button type="submit" disabled={loading} className="w-full bg-accent text-white font-bold py-3 rounded-lg hover:bg-accent/90 transition-all mt-2 flex items-center justify-center gap-2 disabled:opacity-50 cursor-pointer">
+          <button 
+            type="submit" 
+            disabled={isSubmitDisabled} 
+            className="w-full bg-accent text-white font-bold py-3 rounded-lg hover:bg-accent/90 transition-all mt-2 flex items-center justify-center gap-2 disabled:opacity-50 disabled:cursor-not-allowed cursor-pointer"
+          >
             {loading ? <Loader2 className="animate-spin" size={20} /> : (isLogin ? 'Entrar' : 'Criar Conta')}
           </button>
         </form>
@@ -214,7 +291,7 @@ export default function LoginModal() {
             type="button"
             onClick={() => handleSocialLogin('google')}
             disabled={!!socialLoading}
-            className="flex-1 flex items-center justify-center gap-3 bg-bg border border-border text-text py-3 rounded-lg hover:border-accent transition-colors cursor-pointer font-medium text-sm disabled:opacity-50"
+            className="flex-1 flex items-center justify-center gap-3 bg-transparent border border-border text-text py-3 rounded-lg hover:border-accent transition-colors cursor-pointer font-medium text-sm disabled:opacity-50"
           >
             {socialLoading === 'google' ? <Loader2 className="animate-spin" size={18} /> : (
               <svg className="w-5 h-5" viewBox="0 0 24 24">
@@ -230,7 +307,7 @@ export default function LoginModal() {
 
         <div className="mt-6 text-center text-sm text-muted">
           {isLogin ? 'Ainda não tem conta?' : 'Já tem uma conta?'}
-          <button onClick={() => { setIsLogin(!isLogin); setError(null); }} className="ml-2 text-accent font-bold hover:underline cursor-pointer">
+          <button onClick={() => { setIsLogin(!isLogin); setError(null); setUsernameStatus('idle'); }} className="ml-2 text-accent font-bold hover:underline cursor-pointer">
             {isLogin ? 'Cadastre-se' : 'Faça Login'}
           </button>
         </div>
