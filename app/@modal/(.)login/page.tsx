@@ -162,10 +162,8 @@ export default function LoginModal() {
   const isSubmitDisabled = loading || (!isLogin && (username.trim().length < 3 || usernameStatus === 'taken' || usernameStatus === 'checking' || !avatarUrl));
 
   return (
-    // MUDANÇA: Fundo apenas com o gradiente sutil, sem o grid xadrez
     <div key={isLogin ? 'login' : 'cadastro'} className="fixed inset-0 z-[100] flex items-center justify-center bg-bg/80 backdrop-blur-md p-4">
       
-      {/* FUNDO ESTILIZADO (Apenas Gradiente, sem grid) */}
       <div className="absolute inset-0 z-0 opacity-20 pointer-events-none">
         <div className="absolute inset-0 bg-gradient-to-br from-accent/20 via-transparent to-accent/10" />
       </div>
@@ -174,7 +172,8 @@ export default function LoginModal() {
         
         <button 
           onClick={() => router.back()} 
-          className="absolute top-4 right-4 text-muted hover:text-red-400 transition-colors cursor-pointer z-10"
+          aria-label="Fechar"
+          className="absolute top-4 right-4 text-muted hover:text-red-400 transition-colors cursor-pointer z-10 p-2"
         >
           <X size={20} />
         </button>
@@ -244,7 +243,12 @@ export default function LoginModal() {
               type={showPassword ? 'text' : 'password'} placeholder="Sua senha" value={password} onChange={(e) => setPassword(e.target.value)} required
               className="w-full bg-transparent border border-border text-text rounded-lg py-3 pl-10 pr-12 focus:outline-none focus:border-accent focus:ring-1 focus:ring-accent transition-all"
             />
-            <button type="button" onClick={() => setShowPassword(!showPassword)} className="absolute right-3 top-1/2 -translate-y-1/2 text-muted hover:text-accent transition-colors cursor-pointer">
+            <button 
+              type="button" 
+              onClick={() => setShowPassword(!showPassword)} 
+              aria-label={showPassword ? "Ocultar senha" : "Mostrar senha"}
+              className="absolute right-1 top-1/2 -translate-y-1/2 text-muted hover:text-accent transition-colors cursor-pointer p-2"
+            >
               {showPassword ? <EyeOff size={18} /> : <Eye size={18} />}
             </button>
           </div>
@@ -275,7 +279,7 @@ export default function LoginModal() {
           <button 
             type="submit" 
             disabled={isSubmitDisabled} 
-            className="w-full bg-accent text-white font-bold py-3 rounded-lg hover:bg-accent/90 transition-all mt-2 flex items-center justify-center gap-2 disabled:opacity-50 disabled:cursor-not-allowed cursor-pointer"
+            className="w-full bg-[#9333ea] text-white font-bold py-3 rounded-lg hover:bg-[#7e22ce] transition-all mt-2 flex items-center justify-center gap-2 disabled:opacity-50 disabled:cursor-not-allowed cursor-pointer"
           >
             {loading ? <Loader2 className="animate-spin" size={20} /> : (isLogin ? 'Entrar' : 'Criar Conta')}
           </button>
