@@ -22,7 +22,7 @@ export function Notificacoes() {
   const supabase = createClient();
 
   useEffect(() => {
-    let channel: any;
+    let channel: any = null;
 
     const init = async () => {
       const { data: { user } } = await supabase.auth.getUser();
@@ -39,24 +39,26 @@ export function Notificacoes() {
 
       if (data) setNotificacoes(data);
 
-      // 2. Configura o Realtime para escutar novas notificações
+      // 2. Configura o Realtime (A ORDEM AQUI É CRUCIAL)
+      // Usamos um nome de canal único com timestamp para evitar conflitos
+      const channelName = `notificacoes-${user.id}-${Date.now()}`;
+      
       channel = supabase
-        .channel('notificacoes-realtime')
+        .channel(channelName)
         .on(
           'postgres_changes',
           {
-            event: 'INSERT', // Escuta apenas quando uma nova notificação é inserida
+            event: 'INSERT',
             schema: 'public',
             table: 'notifications',
-            filter: `user_id=eq.${user.id}`, // Só escuta as notificações deste usuário
+            filter: `user_id=eq.${user.id}`,
           },
           (payload) => {
-            // Quando uma nova notificação chega, adiciona no topo da lista
             const novaNotificacao = payload.new as Notificacao;
             setNotificacoes((prev) => [novaNotificacao, ...prev].slice(0, 10));
           }
         )
-        .subscribe();
+        .subscribe(); // <-- SEMPRE POR ÚLTIMO
     };
 
     init();
@@ -71,7 +73,9 @@ export function Notificacoes() {
 
     return () => {
       document.removeEventListener('mousedown', handleClickOutside);
-      if (channel) supabase.removeChannel(channel); // Limpa o canal ao desmontar
+      if (channel) {
+        supabase.removeChannel(channel); // Limpa o canal ao desmontar
+      }
     };
   }, [supabase]);
 

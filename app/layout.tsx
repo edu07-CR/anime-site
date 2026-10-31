@@ -3,6 +3,11 @@ import { Geist, Geist_Mono } from "next/font/google";
 import "./globals.css";
 import { Navbar } from "@/components/layout/Navbar";
 import { Footer } from "@/components/layout/Footer";
+import { Analytics } from '@vercel/analytics/react';
+import { createClient } from '@/lib/supabase/server';
+
+// Garante que o layout sempre busque o usuário atual (sem cache)
+export const dynamic = 'force-dynamic';
 
 const geistSans = Geist({
   variable: "--font-geist-sans",
@@ -39,13 +44,29 @@ export const metadata: Metadata = {
   },
 };
 
-export default function RootLayout({
+export default async function RootLayout({
   children,
   modal,
 }: Readonly<{
   children: React.ReactNode;
   modal: React.ReactNode;
 }>) {
+  
+  // 1. Busca o usuário no servidor
+  const supabase = await createClient();
+  const { data: { user } } = await supabase.auth.getUser();
+
+  // 2. Verifica se é admin
+  let isAdmin = false;
+  if (user) {
+    const { data: profile } = await supabase
+      .from('profiles')
+      .select('is_admin')
+      .eq('id', user.id)
+      .single();
+    isAdmin = profile?.is_admin || false;
+  }
+
   return (
     <html lang="pt-BR">
       <body className={`${geistSans.variable} ${geistMono.variable} antialiased min-h-screen flex flex-col bg-bg`}>
@@ -55,6 +76,9 @@ export default function RootLayout({
         </main>
         <Footer />
         {modal}
+
+        {/* 3. O Analytics só é renderizado se o usuário NÃO for admin */}
+        {!isAdmin && <Analytics />}
       </body>
     </html>
   );

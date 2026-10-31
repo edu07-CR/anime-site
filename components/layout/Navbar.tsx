@@ -66,8 +66,9 @@ export function Navbar() {
 
         fetchUnread();
 
+        // CORREÇÃO: Nome do canal único com ID do usuário e timestamp
         channel = supabase
-          .channel('navbar-mensagens')
+          .channel(`navbar-mensagens-${user.id}-${Date.now()}`)
           .on(
             'postgres_changes',
             { event: '*', schema: 'public', table: 'direct_messages' },
