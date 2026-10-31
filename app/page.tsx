@@ -62,14 +62,14 @@ export default function Home() {
         const data = await res.json();
         
         if (data.error) {
-          setErroApi("Não conseguimos carregar os lançamentos no AniVerse agora. Nossos servidores podem estar em manutenção.");
+          setErroApi("Nossos servidores podem estar em manutenção.");
           setAnimes([]);
         } else {
           setAnimes(data.animesDeHoje || []);
         }
       } catch (error) {
         console.error("Erro ao buscar animes:", error);
-        setErroApi("Falha de conexão com os servidores do AniVerse. Tente novamente em instantes.");
+        setErroApi("Falha de conexão com os servidores do AniVerse.");
       } finally {
         setIsLoading(false);
       }
@@ -106,14 +106,15 @@ export default function Home() {
         {/* Título da Seção (H2) para organizar a hierarquia */}
         <h2 className="sr-only">Animes de Hoje</h2> 
 
-        {erroApi ? (
-          <div className="flex flex-col items-center justify-center py-20 text-center bg-surface rounded-xl border border-red-500/20">
-            <AlertCircle size={48} className="text-red-400 mb-4" />
-            <h3 className="text-lg font-bold text-text mb-2">Ops, tivemos um problema!</h3>
-            <p className="text-text/80 text-sm max-w-md">{erroApi}</p>
+        {/* MUDANÇA AQUI: Em vez de tela de erro, mostramos um aviso amigável */}
+        {erroApi && !isLoading ? (
+          <div className="flex flex-col items-center justify-center py-12 px-4 text-center bg-surface rounded-xl border border-border">
+            <AlertCircle size={48} className="text-yellow-500 mb-4" />
+            <h3 className="text-lg font-bold text-text mb-2">Estamos atualizando os lançamentos</h3>
+            <p className="text-muted text-sm max-w-md mb-6">{erroApi} Enquanto isso, explore os animes em destaque na nossa página inicial.</p>
             <button 
               onClick={() => setDiaSelecionado(diaSelecionado)} 
-              className="mt-6 px-4 py-2 bg-accent text-white font-medium rounded-lg hover:bg-accent/80 transition-colors"
+              className="px-6 py-2 bg-accent text-white font-medium rounded-lg hover:bg-accent/80 transition-colors"
             >
               Tentar novamente
             </button>

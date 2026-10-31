@@ -22,6 +22,9 @@ const ANILIST_QUERY = `
 // ==========================================
 async function fetchJikanFallback(diaSelecionado: number) {
   const res = await fetch('https://api.jikan.moe/v4/seasons/now?limit=25&sfw=true', {
+    headers: {
+      'User-Agent': 'AniVerse/1.0 (https://www.aniverse.com.br)' // <-- ADICIONADO AQUI
+    },
     next: { revalidate: 21600 } // Cache de 6 horas
   });
 
@@ -30,30 +33,26 @@ async function fetchJikanFallback(diaSelecionado: number) {
   const json = await res.json();
   const animesDoJikan = json.data;
 
-  // Traduzindo o formato do Jikan para o formato do AniList (que o seu site já usa)
   const animesFormatados = animesDoJikan
     .map((anime: any) => {
-      // O Jikan traz os horários no padrão "Wednesdays" (Quartas)
       const diasDaSemanaIngles = ['Sundays', 'Mondays', 'Tuesdays', 'Wednesdays', 'Thursdays', 'Fridays', 'Saturdays'];
-      const diasDaSemanaPt = ['Dom', 'Seg', 'Ter', 'Qua', 'Qui', 'Sex', 'Sáb'];
       const diaDoAnimeIngles = anime.broadcast?.day;
 
-      // Verifica se o anime passa no dia selecionado
       if (!diaDoAnimeIngles || diasDaSemanaIngles.indexOf(diaDoAnimeIngles) !== diaSelecionado) {
-        return null; // Descarta se não for do dia
+        return null; 
       }
 
       return {
         id: anime.mal_id,
         title: anime.title_english || anime.title,
         coverUrl: anime.images.webp.large_image_url,
-        score: anime.score ? anime.score * 10 : 0, // Jikan usa 0-10, AniList usa 0-100
+        score: anime.score ? anime.score * 10 : 0, 
         formattedTime: anime.broadcast.time ? anime.broadcast.time : '00:00',
-        episode: anime.episodes || 1, // Se não tiver episódio definido, assume 1
-        source: 'jikan' // Apenas para debug, caso queira saber de onde veio
+        episode: anime.episodes || 1, 
+        source: 'jikan' 
       };
     })
-    .filter((anime: any) => anime !== null); // Remove os nulos
+    .filter((anime: any) => anime !== null); 
 
   return animesFormatados;
 }
@@ -62,20 +61,22 @@ async function fetchJikanFallback(diaSelecionado: number) {
 // 3. A ROTA GET (O Cérebro)
 // ==========================================
 export async function GET(req: Request) {
-  // Pega o dia da URL (ex: ?dia=2)
   const { searchParams } = new URL(req.url);
   const diaUrl = searchParams.get('dia');
-  // Converte 'qua' para o número 3 (Domingo=0, Segunda=1...)
   const mapaDias: Record<string, number> = { 'dom': 0, 'seg': 1, 'ter': 2, 'qua': 3, 'qui': 4, 'sex': 5, 'sab': 6 };
-  const diaSelecionado = mapaDias[diaUrl || 'qua']; // Fallback para quarta se não vier nada
+  const diaSelecionado = mapaDias[diaUrl || 'qua']; 
 
   try {
     // ---- TENTATIVA 1: ANILIST ----
     const response = await fetch('https://graphql.anilist.co', {
       method: 'POST',
-      headers: { 'Content-Type': 'application/json', 'Accept': 'application/json' },
+      headers: { 
+        'Content-Type': 'application/json', 
+        'Accept': 'application/json',
+        'User-Agent': 'AniVerse/1.0 (https://www.aniverse.com.br)' // <-- ADICIONADO AQUI
+      },
       body: JSON.stringify({ query: ANILIST_QUERY }),
-      next: { revalidate: 21600 } // Cache de 6 horas
+      next: { revalidate: 21600 } 
     });
 
     if (!response.ok) throw new Error('AniList caiu');
@@ -83,7 +84,6 @@ export async function GET(req: Request) {
     
     if (json.errors) throw new Error('AniList retornou erro');
 
-    // Filtra os animes que são do dia selecionado
     const animesDoAniList = json.data.Page.media
       .filter((anime: any) => anime.nextAiringEpisode !== null)
       .filter((anime: any) => {

@@ -2,12 +2,19 @@ import { createClient as createSupabaseClient } from '@supabase/supabase-js';
 import { createClient as createServerClient } from '@/lib/supabase/server';
 import { redirect } from 'next/navigation';
 import Link from 'next/link';
-import { ShieldAlert, Users, MessageSquare, ArrowLeft, Star, MessageSquareWarning, Tv } from 'lucide-react';
+import { ShieldAlert, Users, MessageSquare, ArrowLeft, Star, MessageSquareWarning, Tv, Eye } from 'lucide-react';
 import { BotaoNotificar } from '@/components/admin/BotaoNotificar';
 import { ToggleChat } from '@/components/admin/ToggleChat';
 import { ToggleFeed } from '@/components/admin/ToggleFeed';
 import { CardFeedback } from '@/components/admin/CardFeedback';
 import { GerenciarStreaming } from '@/components/admin/GerenciarStreaming';
+import { GraficoAnalytics } from '@/components/admin/GraficoAnalytics';
+
+// 1. Definimos o tipo que o gráfico espera receber
+interface AnalyticsData {
+  date: string;
+  visitors: number;
+}
 
 export const dynamic = 'force-dynamic';
 
@@ -41,6 +48,30 @@ export default async function AdminPage() {
     .select('*, profiles(username)')
     .order('created_at', { ascending: false })
     .limit(20);
+
+  // 4. Busca os dados de Analytics da Vercel
+  // 2. Tipamos a variável com o array correto
+  let analyticsData: AnalyticsData[] = [];
+  try {
+    const vercelRes = await fetch('https://api.vercel.com/v1/query/web-analytics/visits/aggregate?projectId=' + process.env.VERCEL_PROJECT_ID, {
+      headers: {
+        Authorization: `Bearer ${process.env.VERCEL_ACCESS_TOKEN}`,
+      },
+      next: { revalidate: 3600 } 
+    });
+
+    if (vercelRes.ok) {
+      const vercelJson = await vercelRes.json();
+      if (vercelJson.data && vercelJson.data.length > 0) {
+        analyticsData = vercelJson.data[0].data.map((item: any) => ({
+          date: new Date(item.timestamp).toISOString().split('T')[0],
+          visitors: item.count
+        }));
+      }
+    }
+  } catch (error) {
+    console.error("Erro ao buscar dados da Vercel:", error);
+  }
 
   const usersData = (users || []).map(u => {
     const userStatus = (allStatus || []).filter(s => s.user_id === u.id);
@@ -104,7 +135,7 @@ export default async function AdminPage() {
       </div>
 
       {/* ESTATÍSTICAS */}
-      <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-8">
+      <div className="grid grid-cols-1 md:grid-cols-4 gap-4 mb-8">
         <div className="bg-surface border border-border p-6 rounded-xl flex items-center gap-4">
           <div className="p-3 bg-accent/10 rounded-lg text-accent"><Users size={24} /></div>
           <div><p className="text-sm text-muted">Total de Usuários</p><p className="text-2xl font-bold text-text">{users?.length || 0}</p></div>
@@ -117,6 +148,27 @@ export default async function AdminPage() {
           <div className="p-3 bg-blue-500/10 rounded-lg text-blue-500"><MessageSquare size={24} /></div>
           <div><p className="text-sm text-muted">Animes Marcados</p><p className="text-2xl font-bold text-text">{allStatus?.length || 0}</p></div>
         </div>
+        {/* NOVO CARD DE VISITAS TOTAIS */}
+        <div className="bg-surface border border-border p-6 rounded-xl flex items-center gap-4">
+          <div className="p-3 bg-green-500/10 rounded-lg text-green-500"><Eye size={24} /></div>
+          <div>
+            <p className="text-sm text-muted">Visitantes (30d)</p>
+            <p className="text-2xl font-bold text-text">
+              {analyticsData.reduce((acc, curr) => acc + curr.visitors, 0)}
+            </p>
+          </div>
+        </div>
+      </div>
+
+      {/* GRÁFICO DE ANALYTICS */}
+      <div className="bg-surface border border-border p-6 rounded-xl mb-8">
+        <div className="flex items-center justify-between mb-4">
+          <div className="flex items-center gap-2">
+            <Eye className="text-accent" size={24} />
+            <h2 className="text-xl font-bold text-text">Acessos ao Site (Últimos 7 dias)</h2>
+          </div>
+        </div>
+        <GraficoAnalytics data={analyticsData} />
       </div>
 
       {/* TABELA DE USUÁRIOS */}
