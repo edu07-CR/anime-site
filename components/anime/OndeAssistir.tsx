@@ -1,52 +1,78 @@
 'use client';
 
-import { PlayCircle, ExternalLink } from 'lucide-react';
+import { useState, useEffect } from 'react';
+import { PlayCircle, ExternalLink, Loader2 } from 'lucide-react';
+import { createClient } from '@/lib/supabase/client';
 
-interface Plataforma {
-  nome: string;
-  url: string;
-  cor: string;
-  textoCor: string;
-}
+export function OndeAssistir({ tituloAnime, animeId }: { tituloAnime: string; animeId: number }) {
+  const [plataformasInativas, setPlataformasInativas] = useState<string[]>([]);
+  const [loading, setLoading] = useState(true);
+  const supabase = createClient();
 
-export function OndeAssistir({ tituloAnime }: { tituloAnime: string }) {
-  const criarUrl = (baseUrl: string) => {
-    return `${baseUrl}${encodeURIComponent(tituloAnime)}`;
+  // Função para cortar o título (3 primeiras palavras) - usada na maioria das plataformas
+  const limparTitulo = (titulo: string) => {
+    const palavras = titulo.replace(/[^\w\s]/g, '').split(' ');
+    return palavras.slice(0, 3).join(' ');
   };
 
-  const plataformas: Plataforma[] = [
+  const tituloCortado = limparTitulo(tituloAnime);
+  const criarUrl = (baseUrl: string, titulo: string) => `${baseUrl}${encodeURIComponent(titulo)}`;
+
+  // LISTA COMPLETA DE PLATAFORMAS
+  const todasPlataformas = [
     { 
+      id: 'crunchyroll', 
       nome: 'Crunchyroll', 
-      url: criarUrl('https://www.crunchyroll.com/pt-br/search?q='), 
-      cor: 'bg-[#F47521]', 
-      textoCor: 'text-white' 
+      url: criarUrl('https://www.crunchyroll.com/pt-br/search?q=', tituloCortado), 
+      cor: 'bg-[#F47521]' 
     },
     { 
+      id: 'prime', 
       nome: 'Prime Video', 
-      // LINK COM O SEU ID DE AFILIADO
+      // EXCEÇÃO: PRIME VIDEO USA O TÍTULO COMPLETO
       url: `https://www.primevideo.com/search?phrase=${encodeURIComponent(tituloAnime)}&tag=aniverseofici-20`, 
-      cor: 'bg-[#00A8E1]', 
-      textoCor: 'text-white' 
+      cor: 'bg-[#00A8E1]' 
     },
     { 
+      id: 'disney', 
       nome: 'Disney+', 
-      url: criarUrl('https://www.disneyplus.com/pt-br/search?q='), 
-      cor: 'bg-[#113CCF]', 
-      textoCor: 'text-white' 
+      url: 'https://grfpr.com/g/z1w3b3celh62a5c9a7d55c1634180b/', 
+      cor: 'bg-[#113CCF]' 
     },
     { 
+      id: 'netflix', 
       nome: 'Netflix', 
-      url: criarUrl('https://www.netflix.com/search?q='), 
-      cor: 'bg-[#E50914]', 
-      textoCor: 'text-white' 
+      url: criarUrl('https://www.netflix.com/search?q=', tituloCortado), 
+      cor: 'bg-[#E50914]' 
     },
     { 
+      id: 'max', 
       nome: 'HBO Max', 
-      url: criarUrl('https://www.max.com/br/pt/search?q='), 
-      cor: 'bg-[#5C2D91]', 
-      textoCor: 'text-white' 
+      url: criarUrl('https://www.max.com/br/pt/search?q=', tituloCortado), 
+      cor: 'bg-[#5C2D91]' 
     },
   ];
+
+  useEffect(() => {
+    const fetchInativos = async () => {
+      const { data } = await supabase
+        .from('anime_streaming_inativos')
+        .select('plataforma')
+        .eq('anime_id', animeId);
+
+      if (data) {
+        setPlataformasInativas(data.map((d) => d.plataforma));
+      }
+      setLoading(false);
+    };
+    fetchInativos();
+  }, [animeId, supabase]);
+
+  if (loading) {
+    return <div className="bg-accent/5 border border-accent/20 rounded-xl p-4 w-full max-w-md flex justify-center"><Loader2 className="animate-spin text-accent" /></div>;
+  }
+
+  const plataformasParaMostrar = todasPlataformas.filter(p => !plataformasInativas.includes(p.id));
 
   return (
     <div className="bg-accent/5 border border-accent/20 rounded-xl p-4 w-full max-w-md">
@@ -56,13 +82,13 @@ export function OndeAssistir({ tituloAnime }: { tituloAnime: string }) {
       </div>
       
       <div className="flex flex-wrap gap-2">
-        {plataformas.map((p) => (
+        {plataformasParaMostrar.map((p) => (
           <a
-            key={p.nome}
+            key={p.id}
             href={p.url}
             target="_blank"
             rel="noopener noreferrer"
-            className={`${p.cor} ${p.textoCor} text-sm font-bold px-4 py-2 rounded-lg hover:opacity-90 transition-opacity flex items-center gap-2`}
+            className={`${p.cor} text-white text-sm font-bold px-4 py-2 rounded-lg hover:opacity-90 transition-opacity flex items-center gap-2`}
           >
             {p.nome}
             <ExternalLink size={14} className="opacity-70" />

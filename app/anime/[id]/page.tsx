@@ -6,49 +6,82 @@ import { BotaoTrailer } from '@/components/anime/BotaoTrailer';
 import { SecaoComentarios } from '@/components/anime/SecaoComentarios'; 
 import { EspacoAnuncio } from '@/components/layout/EspacoAnuncio';
 import { OndeAssistir } from '@/components/anime/OndeAssistir';
-import { BannerGeek } from '@/components/anime/BannerGeek'; // <-- IMPORT DO BANNER GEEK
+import { BannerGeek } from '@/components/anime/BannerGeek';
 
 // ==========================================
-// FUNÇÕES DE TRADUÇÃO E BUSCA
+// FUNÇÕES DE TRADUÇÃO
 // ==========================================
-async function traduzirComGroq(texto: string) {
+async function traduzirComGroq(texto: string, tipo: 'sinopse' | 'titulo' = 'sinopse') {
   const API_KEY = process.env.GROQ_API_KEY; 
   if (!API_KEY) return null;
-  const prompt = `Traduza a seguinte sinopse de anime para o português do Brasil. Retorne APENAS o texto traduzido: "${texto}"`;
+  
+  let prompt = '';
+  if (tipo === 'sinopse') {
+    prompt = `Traduza a seguinte sinopse de anime para o português do Brasil. Retorne APENAS o texto traduzido: "${texto}"`;
+  } else {
+    prompt = `
+      Avalie o seguinte título de anime: "${texto}".
+      Regras:
+      1. Se o título já for universalmente conhecido em inglês ou for um nome próprio (ex: "Black Clover", "Dragon Ball", "Naruto"), retorne o título EXATAMENTE como está.
+      2. Se o título for em japonês (romaji) ou tiver uma tradução clara e comum em português (ex: "Shingeki no Kyojin" -> "Ataque dos Titãs"), retorne APENAS a tradução em português.
+      3. Não adicione explicações, apenas o título final.
+    `;
+  }
+
   try {
     const res = await fetch('https://api.groq.com/openai/v1/chat/completions', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${API_KEY}` },
-      body: JSON.stringify({ model: "openai/gpt-oss-20b", messages: [{ role: "system", content: "Você é um tradutor profissional de animes." }, { role: "user", content: prompt }], temperature: 0.3 })
+      body: JSON.stringify({ 
+        model: "openai/gpt-oss-20b", 
+        messages: [{ role: "system", content: "Você é um tradutor profissional de animes." }, { role: "user", content: prompt }], 
+        temperature: tipo === 'titulo' ? 0.1 : 0.3 
+      })
     });
     if (!res.ok) throw new Error(`Groq HTTP: ${res.status}`);
     const data = await res.json();
-    return data.choices?.[0]?.message?.content || null; 
+    return data.choices?.[0]?.message?.content?.trim() || null; 
   } catch (error) { return null; }
 }
 
-async function traduzirComGemini(texto: string) {
+async function traduzirComGemini(texto: string, tipo: 'sinopse' | 'titulo' = 'sinopse') {
   const API_KEY = process.env.GEMINI_API_KEY; 
   if (!API_KEY) return null; 
-  const prompt = `Traduza a seguinte sinopse de anime para o português do Brasil. Retorne APENAS o texto traduzido: "${texto}"`;
+  
+  let prompt = '';
+  if (tipo === 'sinopse') {
+    prompt = `Traduza a seguinte sinopse de anime para o português do Brasil. Retorne APENAS o texto traduzido: "${texto}"`;
+  } else {
+    prompt = `
+      Avalie o seguinte título de anime: "${texto}".
+      Regras:
+      1. Se o título já for universalmente conhecido em inglês ou for um nome próprio (ex: "Black Clover", "Dragon Ball", "Naruto"), retorne o título EXATAMENTE como está.
+      2. Se o título for em japonês (romaji) ou tiver uma tradução clara e comum em português (ex: "Shingeki no Kyojin" -> "Ataque dos Titãs"), retorne APENAS a tradução em português.
+      3. Não adicione explicações, apenas o título final.
+    `;
+  }
+
   try {
     const res = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/gemini-3.5-flash-lite:generateContent?key=${API_KEY}`, {
       method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ contents: [{ parts: [{ text: prompt }] }] })
     });
     if (!res.ok) throw new Error(`Gemini HTTP: ${res.status}`);
     const data = await res.json();
-    return data.candidates?.[0]?.content?.parts?.[0]?.text || null; 
+    return data.candidates?.[0]?.content?.parts?.[0]?.text?.trim() || null; 
   } catch (error) { return null; }
 }
 
-async function traduzirTexto(texto: string) {
-  let traducao = await traduzirComGroq(texto);
+async function traduzirTexto(texto: string, tipo: 'sinopse' | 'titulo' = 'sinopse') {
+  let traducao = await traduzirComGroq(texto, tipo);
   if (traducao) return traducao;
-  traducao = await traduzirComGemini(texto);
+  traducao = await traduzirComGemini(texto, tipo);
   if (traducao) return traducao;
   return texto;
 }
 
+// ==========================================
+// FUNÇÕES DE BUSCA
+// ==========================================
 async function getAnimeFromAniList(id: string) {
   const query = `
     query ($id: Int) {
@@ -66,10 +99,19 @@ async function getAnimeFromAniList(id: string) {
   const json = await res.json();
   if (json.errors || !json.data.Media) return null;
   const anime = json.data.Media;
+  
+  // Traduz a sinopse e o título (se necessário)
   if (anime.description) {
     const textoLimpo = anime.description.replace(/<[^>]*>?/gm, '');
-    anime.description = await traduzirTexto(textoLimpo); 
+    anime.description = await traduzirTexto(textoLimpo, 'sinopse'); 
   }
+  
+  const tituloOriginal = anime.title.english || anime.title.romaji;
+  // Só traduz o título se ele for diferente do inglês (romaji) ou se for um título japonês
+  // A IA decide se precisa traduzir
+  const tituloTraduzido = await traduzirTexto(tituloOriginal, 'titulo');
+  anime.title.portuguese = tituloTraduzido; 
+
   return anime;
 }
 
@@ -79,12 +121,19 @@ async function getAnimeFromJikan(id: string) {
   const json = await res.json();
   const data = json.data;
   if (!data) return null;
+  
   let sinopse = data.synopsis || 'Sem sinopse disponível.';
-  if (sinopse !== 'Sem sinopse disponível.') { sinopse = await traduzirTexto(sinopse); }
+  if (sinopse !== 'Sem sinopse disponível.') { sinopse = await traduzirTexto(sinopse, 'sinopse'); }
+  
+  const tituloOriginal = data.title_english || data.title;
+  const tituloTraduzido = await traduzirTexto(tituloOriginal, 'titulo');
+
   return {
-    id: data.mal_id, title: { english: data.title_english, romaji: data.title },
+    id: data.mal_id, 
+    title: { english: data.title_english, romaji: data.title, portuguese: tituloTraduzido },
     coverImage: { extraLarge: data.images.webp.large_image_url, large: data.images.webp.large_image_url },
-    bannerImage: data.trailer?.images?.maximum_image_url || null, description: sinopse,
+    bannerImage: data.trailer?.images?.maximum_image_url || null, 
+    description: sinopse,
     genres: data.genres?.map((g: any) => g.name) || [],
     status: data.status === 'Currently Airing' ? 'RELEASING' : 'FINISHED',
     episodes: data.episodes, seasonYear: data.year,
@@ -122,6 +171,7 @@ export default async function AnimePage({ params }: { params: Promise<{ id: stri
     );
   }
 
+  // Usa o título traduzido (se existir) ou o original
   const title = anime.title.english || anime.title.romaji;
   const studio = anime.studios?.nodes?.[0]?.name || 'Estúdio Desconhecido';
   const sinopse = anime.description || 'Sem sinopse disponível.';
@@ -205,7 +255,7 @@ export default async function AnimePage({ params }: { params: Promise<{ id: stri
               <div className="flex flex-col gap-5">
                 <AcoesAnime animeId={anime.id} />
                 <div className="-mt-4">
-                  <OndeAssistir tituloAnime={title} />
+                  <OndeAssistir tituloAnime={title} animeId={anime.id} />
                 </div>
                 
                 {/* BANNER DE PRODUTOS GEEK */}

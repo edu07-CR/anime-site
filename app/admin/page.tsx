@@ -2,11 +2,12 @@ import { createClient as createSupabaseClient } from '@supabase/supabase-js';
 import { createClient as createServerClient } from '@/lib/supabase/server';
 import { redirect } from 'next/navigation';
 import Link from 'next/link';
-import { ShieldAlert, Users, MessageSquare, ArrowLeft, Star, MessageSquareWarning } from 'lucide-react';
+import { ShieldAlert, Users, MessageSquare, ArrowLeft, Star, MessageSquareWarning, Tv } from 'lucide-react';
 import { BotaoNotificar } from '@/components/admin/BotaoNotificar';
 import { ToggleChat } from '@/components/admin/ToggleChat';
 import { ToggleFeed } from '@/components/admin/ToggleFeed';
 import { CardFeedback } from '@/components/admin/CardFeedback';
+import { GerenciarStreaming } from '@/components/admin/GerenciarStreaming';
 
 export const dynamic = 'force-dynamic';
 
@@ -27,7 +28,6 @@ export default async function AdminPage() {
 
   // 1. Busca a configuração do site
   const { data: config } = await supabaseAdmin.from('site_config').select('chat_enabled, feed_enabled').single();
-  
   const chatAtivo = config?.chat_enabled ?? true;
   const feedAtivo = config?.feed_enabled ?? true;
 
@@ -94,6 +94,16 @@ export default async function AdminPage() {
         </div>
       </div>
 
+      {/* GERENCIADOR DE STREAMING */}
+      <div className="bg-surface border border-border p-6 rounded-xl mb-8">
+        <div className="flex items-center gap-2 mb-4">
+          <Tv className="text-accent" size={24} />
+          <h2 className="text-xl font-bold text-text">Gerenciar Disponibilidade</h2>
+        </div>
+        <GerenciarStreaming />
+      </div>
+
+      {/* ESTATÍSTICAS */}
       <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-8">
         <div className="bg-surface border border-border p-6 rounded-xl flex items-center gap-4">
           <div className="p-3 bg-accent/10 rounded-lg text-accent"><Users size={24} /></div>
@@ -150,12 +160,12 @@ export default async function AdminPage() {
         <MessageSquareWarning className="text-accent" size={24} />
         <h2 className="text-xl font-bold text-text">Feedbacks e Sugestões</h2>
       </div>
-            <div className="bg-surface border border-border rounded-xl overflow-hidden">
+      <div className="bg-surface border border-border rounded-xl overflow-hidden">
         {feedbacks?.length === 0 ? (
           <p className="p-6 text-muted text-sm">Nenhum feedback recebido ainda.</p>
         ) : (
           feedbacks?.map((fb) => (
-            <CardFeedback key={fb.id} feedback={fb} /> // <-- USA O COMPONENTE AQUI
+            <CardFeedback key={fb.id} feedback={fb} />
           ))
         )}
       </div>

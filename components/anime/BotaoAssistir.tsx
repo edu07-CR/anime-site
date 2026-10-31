@@ -30,7 +30,8 @@ export function OndeAssistir({ tituloAnime }: { tituloAnime: string }) {
     },
     { 
       nome: 'Disney+', 
-      url: criarUrl('https://www.disneyplus.com/pt-br/search?q='), 
+      // LINK DE AFILIADO DA DISNEY (ADMITAD)
+      url: 'https://grfpr.com/g/z1w3b3celh62a5c9a7d55c1634180b/', 
       cor: 'bg-[#113CCF]', 
       textoCor: 'text-white' 
     },
