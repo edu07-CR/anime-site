@@ -9,79 +9,46 @@ import { OndeAssistir } from '@/components/anime/OndeAssistir';
 import { BannerGeek } from '@/components/anime/BannerGeek';
 
 // ==========================================
-// FUNÇÕES DE TRADUÇÃO
+// FUNÇÕES DE TRADUÇÃO E BUSCA
 // ==========================================
-async function traduzirComGroq(texto: string, tipo: 'sinopse' | 'titulo' = 'sinopse') {
+async function traduzirComGroq(texto: string) {
   const API_KEY = process.env.GROQ_API_KEY; 
   if (!API_KEY) return null;
-  
-  let prompt = '';
-  if (tipo === 'sinopse') {
-    prompt = `Traduza a seguinte sinopse de anime para o português do Brasil. Retorne APENAS o texto traduzido: "${texto}"`;
-  } else {
-    prompt = `
-      Avalie o seguinte título de anime: "${texto}".
-      Regras:
-      1. Se o título já for universalmente conhecido em inglês ou for um nome próprio (ex: "Black Clover", "Dragon Ball", "Naruto"), retorne o título EXATAMENTE como está.
-      2. Se o título for em japonês (romaji) ou tiver uma tradução clara e comum em português (ex: "Shingeki no Kyojin" -> "Ataque dos Titãs"), retorne APENAS a tradução em português.
-      3. Não adicione explicações, apenas o título final.
-    `;
-  }
-
+  const prompt = `Traduza a seguinte sinopse de anime para o português do Brasil. Retorne APENAS o texto traduzido: "${texto}"`;
   try {
     const res = await fetch('https://api.groq.com/openai/v1/chat/completions', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${API_KEY}` },
-      body: JSON.stringify({ 
-        model: "openai/gpt-oss-20b", 
-        messages: [{ role: "system", content: "Você é um tradutor profissional de animes." }, { role: "user", content: prompt }], 
-        temperature: tipo === 'titulo' ? 0.1 : 0.3 
-      })
+      body: JSON.stringify({ model: "openai/gpt-oss-20b", messages: [{ role: "system", content: "Você é um tradutor profissional de animes." }, { role: "user", content: prompt }], temperature: 0.3 })
     });
     if (!res.ok) throw new Error(`Groq HTTP: ${res.status}`);
     const data = await res.json();
-    return data.choices?.[0]?.message?.content?.trim() || null; 
+    return data.choices?.[0]?.message?.content || null; 
   } catch (error) { return null; }
 }
 
-async function traduzirComGemini(texto: string, tipo: 'sinopse' | 'titulo' = 'sinopse') {
+async function traduzirComGemini(texto: string) {
   const API_KEY = process.env.GEMINI_API_KEY; 
   if (!API_KEY) return null; 
-  
-  let prompt = '';
-  if (tipo === 'sinopse') {
-    prompt = `Traduza a seguinte sinopse de anime para o português do Brasil. Retorne APENAS o texto traduzido: "${texto}"`;
-  } else {
-    prompt = `
-      Avalie o seguinte título de anime: "${texto}".
-      Regras:
-      1. Se o título já for universalmente conhecido em inglês ou for um nome próprio (ex: "Black Clover", "Dragon Ball", "Naruto"), retorne o título EXATAMENTE como está.
-      2. Se o título for em japonês (romaji) ou tiver uma tradução clara e comum em português (ex: "Shingeki no Kyojin" -> "Ataque dos Titãs"), retorne APENAS a tradução em português.
-      3. Não adicione explicações, apenas o título final.
-    `;
-  }
-
+  const prompt = `Traduza a seguinte sinopse de anime para o português do Brasil. Retorne APENAS o texto traduzido: "${texto}"`;
   try {
     const res = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/gemini-3.5-flash-lite:generateContent?key=${API_KEY}`, {
       method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ contents: [{ parts: [{ text: prompt }] }] })
     });
     if (!res.ok) throw new Error(`Gemini HTTP: ${res.status}`);
     const data = await res.json();
-    return data.candidates?.[0]?.content?.parts?.[0]?.text?.trim() || null; 
+    return data.candidates?.[0]?.content?.parts?.[0]?.text || null; 
   } catch (error) { return null; }
 }
 
-async function traduzirTexto(texto: string, tipo: 'sinopse' | 'titulo' = 'sinopse') {
-  let traducao = await traduzirComGroq(texto, tipo);
+async function traduzirTexto(texto: string) {
+  let traducao = await traduzirComGroq(texto);
   if (traducao) return traducao;
-  traducao = await traduzirComGemini(texto, tipo);
+  traducao = await traduzirComGemini(texto);
   if (traducao) return traducao;
   return texto;
 }
 
-// ==========================================
-// FUNÇÕES DE BUSCA
-// ==========================================
 async function getAnimeFromAniList(id: string) {
   const query = `
     query ($id: Int) {
@@ -99,19 +66,10 @@ async function getAnimeFromAniList(id: string) {
   const json = await res.json();
   if (json.errors || !json.data.Media) return null;
   const anime = json.data.Media;
-  
-  // Traduz a sinopse e o título (se necessário)
   if (anime.description) {
     const textoLimpo = anime.description.replace(/<[^>]*>?/gm, '');
-    anime.description = await traduzirTexto(textoLimpo, 'sinopse'); 
+    anime.description = await traduzirTexto(textoLimpo); 
   }
-  
-  const tituloOriginal = anime.title.english || anime.title.romaji;
-  // Só traduz o título se ele for diferente do inglês (romaji) ou se for um título japonês
-  // A IA decide se precisa traduzir
-  const tituloTraduzido = await traduzirTexto(tituloOriginal, 'titulo');
-  anime.title.portuguese = tituloTraduzido; 
-
   return anime;
 }
 
@@ -121,19 +79,12 @@ async function getAnimeFromJikan(id: string) {
   const json = await res.json();
   const data = json.data;
   if (!data) return null;
-  
   let sinopse = data.synopsis || 'Sem sinopse disponível.';
-  if (sinopse !== 'Sem sinopse disponível.') { sinopse = await traduzirTexto(sinopse, 'sinopse'); }
-  
-  const tituloOriginal = data.title_english || data.title;
-  const tituloTraduzido = await traduzirTexto(tituloOriginal, 'titulo');
-
+  if (sinopse !== 'Sem sinopse disponível.') { sinopse = await traduzirTexto(sinopse); }
   return {
-    id: data.mal_id, 
-    title: { english: data.title_english, romaji: data.title, portuguese: tituloTraduzido },
+    id: data.mal_id, title: { english: data.title_english, romaji: data.title },
     coverImage: { extraLarge: data.images.webp.large_image_url, large: data.images.webp.large_image_url },
-    bannerImage: data.trailer?.images?.maximum_image_url || null, 
-    description: sinopse,
+    bannerImage: data.trailer?.images?.maximum_image_url || null, description: sinopse,
     genres: data.genres?.map((g: any) => g.name) || [],
     status: data.status === 'Currently Airing' ? 'RELEASING' : 'FINISHED',
     episodes: data.episodes, seasonYear: data.year,
@@ -171,7 +122,6 @@ export default async function AnimePage({ params }: { params: Promise<{ id: stri
     );
   }
 
-  // Usa o título traduzido (se existir) ou o original
   const title = anime.title.english || anime.title.romaji;
   const studio = anime.studios?.nodes?.[0]?.name || 'Estúdio Desconhecido';
   const sinopse = anime.description || 'Sem sinopse disponível.';
@@ -222,7 +172,8 @@ export default async function AnimePage({ params }: { params: Promise<{ id: stri
             {/* INFORMAÇÕES + SINOPSE + COMENTÁRIOS */}
             <div className="w-full md:w-2/3 flex flex-col">
               
-              <div className="flex items-center gap-3 mb-2 text-accent text-sm font-semibold">
+              {/* Informações Básicas (Contraste Melhorado) */}
+              <div className="flex items-center gap-3 mb-2 text-text/80 text-sm font-semibold">
                 <span>{anime.seasonYear || 'Ano Desconhecido'}</span>
                 <span>•</span>
                 <span>{anime.status === 'RELEASING' ? 'Em exibição' : 'Finalizado'}</span>
@@ -235,18 +186,20 @@ export default async function AnimePage({ params }: { params: Promise<{ id: stri
               </h1>
 
               <div className="flex items-center gap-4 mb-6">
-                <div className="flex items-center gap-1 text-yellow-400 font-bold text-lg bg-yellow-400/10 px-3 py-1 rounded-lg">
+                {/* Nota com Cores Melhoradas */}
+                <div className="flex items-center gap-1 text-yellow-600 font-bold text-lg bg-yellow-400/20 px-3 py-1 rounded-lg border border-yellow-400/30">
                   <Star size={20} fill="currentColor" />
                   {anime.averageScore ? (anime.averageScore / 10).toFixed(1) : 'N/A'}
                 </div>
-                <div className="text-muted text-sm">
+                {/* Estúdio com Contraste Melhorado */}
+                <div className="text-text/80 text-sm">
                   Estúdio: <span className="text-text font-medium">{studio}</span>
                 </div>
               </div>
 
               <div className="flex flex-wrap gap-2 mb-4">
                 {anime.genres?.map((genre: string) => (
-                  <span key={genre} className="px-3 py-1 text-xs font-semibold bg-surface border border-border rounded-full text-muted">
+                  <span key={genre} className="px-3 py-1 text-xs font-semibold bg-surface border border-border rounded-full text-text/80">
                     {genre}
                   </span>
                 ))}
@@ -262,10 +215,10 @@ export default async function AnimePage({ params }: { params: Promise<{ id: stri
                 <BannerGeek tituloAnime={title} />
               </div>
 
-              {/* SINOPSE */}
+              {/* SINOPSE com Contraste Melhorado */}
               <div className="mb-8 mt-6">
                 <h2 className="text-xl font-bold text-text mb-3">Sinopse</h2>
-                <p className="text-muted leading-relaxed text-sm md:text-base">
+                <p className="text-text/80 leading-relaxed text-sm md:text-base">
                   {sinopse}
                 </p>
               </div>

@@ -1,7 +1,7 @@
 'use client';
 
 import { useState, useEffect } from 'react';
-import { PlayCircle, ExternalLink, Loader2 } from 'lucide-react';
+import { PlayCircle, ExternalLink, AlertCircle, Loader2 } from 'lucide-react';
 import { createClient } from '@/lib/supabase/client';
 
 export function OndeAssistir({ tituloAnime, animeId }: { tituloAnime: string; animeId: number }) {
@@ -9,48 +9,15 @@ export function OndeAssistir({ tituloAnime, animeId }: { tituloAnime: string; an
   const [loading, setLoading] = useState(true);
   const supabase = createClient();
 
-  // Função para cortar o título (3 primeiras palavras) - usada na maioria das plataformas
-  const limparTitulo = (titulo: string) => {
-    const palavras = titulo.replace(/[^\w\s]/g, '').split(' ');
-    return palavras.slice(0, 3).join(' ');
-  };
+  const criarUrl = (baseUrl: string) => `${baseUrl}${encodeURIComponent(tituloAnime)}`;
 
-  const tituloCortado = limparTitulo(tituloAnime);
-  const criarUrl = (baseUrl: string, titulo: string) => `${baseUrl}${encodeURIComponent(titulo)}`;
-
-  // LISTA COMPLETA DE PLATAFORMAS
+  // Cores mais escuras para garantir contraste
   const todasPlataformas = [
-    { 
-      id: 'crunchyroll', 
-      nome: 'Crunchyroll', 
-      url: criarUrl('https://www.crunchyroll.com/pt-br/search?q=', tituloCortado), 
-      cor: 'bg-[#F47521]' 
-    },
-    { 
-      id: 'prime', 
-      nome: 'Prime Video', 
-      // EXCEÇÃO: PRIME VIDEO USA O TÍTULO COMPLETO
-      url: `https://www.primevideo.com/search?phrase=${encodeURIComponent(tituloAnime)}&tag=aniverseofici-20`, 
-      cor: 'bg-[#00A8E1]' 
-    },
-    { 
-      id: 'disney', 
-      nome: 'Disney+', 
-      url: 'https://grfpr.com/g/z1w3b3celh62a5c9a7d55c1634180b/', 
-      cor: 'bg-[#113CCF]' 
-    },
-    { 
-      id: 'netflix', 
-      nome: 'Netflix', 
-      url: criarUrl('https://www.netflix.com/search?q=', tituloCortado), 
-      cor: 'bg-[#E50914]' 
-    },
-    { 
-      id: 'max', 
-      nome: 'HBO Max', 
-      url: criarUrl('https://www.max.com/br/pt/search?q=', tituloCortado), 
-      cor: 'bg-[#5C2D91]' 
-    },
+    { id: 'crunchyroll', nome: 'Crunchyroll', url: criarUrl('https://www.crunchyroll.com/pt-br/search?q='), cor: 'bg-[#E65100]' },
+    { id: 'prime', nome: 'Prime Video', url: `https://www.primevideo.com/search?phrase=${encodeURIComponent(tituloAnime)}&tag=aniverseofici-20`, cor: 'bg-[#005A9E]' },
+    { id: 'disney', nome: 'Disney+', url: 'https://grfpr.com/g/z1w3b3celh62a5c9a7d55c1634180b/', cor: 'bg-[#0D2A8A]' },
+    { id: 'netflix', nome: 'Netflix', url: criarUrl('https://www.netflix.com/search?q='), cor: 'bg-[#B20710]' },
+    { id: 'max', nome: 'HBO Max', url: criarUrl('https://www.max.com/br/pt/search?q='), cor: 'bg-[#3E1A6E]' },
   ];
 
   useEffect(() => {
@@ -96,7 +63,7 @@ export function OndeAssistir({ tituloAnime, animeId }: { tituloAnime: string; an
         ))}
       </div>
       
-      <p className="text-xs text-muted mt-3">
+      <p className="text-xs text-text/70 mt-3">
         A disponibilidade pode variar. Clique para buscar no serviço.
       </p>
     </div>
