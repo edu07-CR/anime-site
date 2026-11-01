@@ -26,6 +26,12 @@ export const metadata: Metadata = {
   },
   description: "Acompanhe os lançamentos de animes da semana, crie seu Top 10 pessoal, converse no chat da comunidade e descubra os animes mais populares da temporada.",
   keywords: ["anime", "lançamentos de anime", "top 10 animes", "calendário de animes", "animes da temporada", "chat de anime"],
+  
+  // ADICIONADO AQUI: Configuração do Favicon para o Google
+  icons: {
+    icon: '/icon.svg', // Certifique-se de que o arquivo existe na pasta public
+  },
+
   openGraph: {
     title: "AniVerse | Seu portal de animes",
     description: "Acompanhe os lançamentos, monte seu Top 10 e converse com outros fãs de anime.",
@@ -52,11 +58,9 @@ export default async function RootLayout({
   modal: React.ReactNode;
 }>) {
   
-  // 1. Busca o usuário no servidor
   const supabase = await createClient();
   const { data: { user } } = await supabase.auth.getUser();
 
-  // 2. Verifica se é admin
   let isAdmin = false;
   if (user) {
     const { data: profile } = await supabase
@@ -77,7 +81,6 @@ export default async function RootLayout({
         <Footer />
         {modal}
 
-        {/* 3. O Analytics só é renderizado se o usuário NÃO for admin */}
         {!isAdmin && <Analytics />}
       </body>
     </html>
