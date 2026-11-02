@@ -2,7 +2,7 @@
 
 import { useState, useEffect } from 'react';
 import { createClient } from '@/lib/supabase/client';
-import { Lock, Unlock } from 'lucide-react';
+import { Lock, Unlock, Hammer } from 'lucide-react'; // Importei o ícone Hammer
 
 export function MetaChat() {
   const [totalUsuarios, setTotalUsuarios] = useState<number>(0);
@@ -52,7 +52,7 @@ export function MetaChat() {
   return (
     <div className="bg-surface border border-accent/30 rounded-xl p-4 md:p-6 shadow-lg shadow-accent/10 text-center relative overflow-hidden">
       <div className="flex items-center justify-center gap-2 text-accent font-bold mb-2">
-        <Lock size={20} /> O Chat da Comunidade está quase pronto!
+        <Hammer size={20} /> Chat da Comunidade em Construção
       </div>
       <p className="text-muted text-sm mb-4">
         Estamos preparando um espaço exclusivo para os fãs. Acompanhe o progresso:
@@ -68,7 +68,6 @@ export function MetaChat() {
         </div>
       </div>
       
-      {/* TEXTO ALTERADO AQUI */}
       <div className="flex items-center justify-center gap-2 text-sm text-text font-bold">
         Faltam <span className="text-accent">{faltam}</span> {faltam === 1 ? 'usuário' : 'usuários'} para bater a meta!
       </div>
