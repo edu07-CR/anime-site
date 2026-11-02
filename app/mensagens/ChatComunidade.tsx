@@ -2,7 +2,7 @@
 
 import { useState, useEffect, useRef } from 'react';
 import { createClient } from '@/lib/supabase/client';
-import { Loader2, Send, Lock, Trash2, Clock } from 'lucide-react';
+import { Loader2, Send, Lock, Trash2, Clock, Flag } from 'lucide-react';
 import Image from 'next/image';
 import Link from 'next/link';
 import { formatDistanceToNow } from 'date-fns';
@@ -28,21 +28,24 @@ export function ChatComunidade() {
   const [userId, setUserId] = useState<string | null>(null);
   const [isAdmin, setIsAdmin] = useState(false);
   const [bloqueado, setBloqueado] = useState(false);
+  const [denunciando, setDenunciando] = useState(false);
   
   const bottomRef = useRef<HTMLDivElement>(null);
   const supabase = createClient();
 
   useEffect(() => {
     const init = async () => {
-      // 1. Verifica bloqueio
-      const { data: config } = await supabase.from('site_config').select('chat_enabled').single();
-      if (config?.chat_enabled === false) {
-        setBloqueado(true);
-        setLoading(false);
-        return;
+      const isDev = process.env.NODE_ENV === 'development';
+
+      if (!isDev) {
+        const { data: config } = await supabase.from('site_config').select('chat_enabled').single();
+        if (config?.chat_enabled === false) {
+          setBloqueado(true);
+          setLoading(false);
+          return;
+        }
       }
 
-      // 2. Pega usuário e verifica se é admin
       const { data: { user } } = await supabase.auth.getUser();
       if (user) {
         setUserId(user.id);
@@ -50,7 +53,6 @@ export function ChatComunidade() {
         if (profile?.is_admin) setIsAdmin(true);
       }
 
-      // 3. Busca mensagens
       const { data } = await supabase
         .from('chat_messages')
         .select(`id, content, created_at, user_id, profiles (username, avatar_url, is_admin)`)
@@ -63,21 +65,18 @@ export function ChatComunidade() {
 
     init();
 
-    // Realtime
     const channel = supabase
-      .channel('chat-geral')
+      .channel(`chat-comunidade-${Date.now()}`)
       .on(
         'postgres_changes',
         { event: 'INSERT', schema: 'public', table: 'chat_messages' },
         async (payload) => {
           if (bloqueado) return;
-
           const { data } = await supabase
             .from('chat_messages')
             .select(`id, content, created_at, user_id, profiles (username, avatar_url, is_admin)`)
             .eq('id', payload.new.id)
             .single();
-            
           if (data) setMensagens((prev) => [...prev, data as unknown as Mensagem]);
         }
       )
@@ -94,23 +93,54 @@ export function ChatComunidade() {
     e.preventDefault();
     if (!novaMensagem.trim() || !userId || bloqueado) return;
 
+    // 1. Verifica o Rate Limit via API (roda no servidor)
+    const rateRes = await fetch('/api/rate-limit', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ userId })
+    });
+    
+    const rateData = await rateRes.json();
+
+    if (!rateData.success) {
+      const segundosRestantes = Math.ceil((rateData.reset - Date.now()) / 1000);
+      alert(`Você está enviando mensagens muito rápido. Aguarde ${segundosRestantes} segundos.`);
+      return;
+    }
+
+    // 2. Prossegue com o envio
     const msg = novaMensagem;
     setNovaMensagem('');
 
     await supabase.from('chat_messages').insert({ user_id: userId, content: msg });
   };
 
-  // FUNÇÃO PARA DELETAR UMA MENSAGEM ESPECÍFICA
   const handleDeletarMensagem = async (id: string) => {
     if (!confirm('Tem certeza que deseja apagar esta mensagem?')) return;
-
     const { error } = await supabase.from('chat_messages').delete().eq('id', id);
-    
-    if (error) {
-      alert('Erro ao apagar a mensagem.');
-    } else {
-      // Remove da tela na hora
-      setMensagens((prev) => prev.filter((msg) => msg.id !== id));
+    if (error) alert('Erro ao apagar a mensagem.');
+    else setMensagens((prev) => prev.filter((msg) => msg.id !== id));
+  };
+
+  const handleDenunciar = async (msg: Mensagem) => {
+    if (!userId) return;
+    if (!confirm(`Deseja denunciar a mensagem de ${msg.profiles.username}?`)) return;
+
+    setDenunciando(true);
+    try {
+      const { error } = await supabase.from('feedbacks').insert({
+        user_id: userId,
+        type: 'denuncia',
+        message: `Denúncia de mensagem no chat: "${msg.content}" (Autor: ${msg.profiles.username} | ID da msg: ${msg.id})`
+      });
+
+      if (error) throw error;
+      alert('Denúncia enviada! Nossa equipe irá analisar.');
+    } catch (error) {
+      console.error(error);
+      alert('Erro ao enviar a denúncia.');
+    } finally {
+      setDenunciando(false);
     }
   };
 
@@ -138,7 +168,6 @@ export function ChatComunidade() {
   return (
     <div className="flex flex-col h-[60vh] bg-bg/20 rounded-b-2xl">
       
-      {/* AVISO DE LIMPEZA AUTOMÁTICA */}
       <div className="p-2 border-b border-border bg-surface/50 flex items-center justify-center gap-2 text-muted text-[10px]">
         <Clock size={12} />
         <span>As mensagens são apagadas automaticamente a cada 24h.</span>
@@ -147,7 +176,6 @@ export function ChatComunidade() {
       <div className="flex-1 overflow-y-auto p-4 space-y-4">
         {mensagens.map((msg) => {
           const isMe = msg.user_id === userId;
-          // Pode deletar se for a própria mensagem OU se for admin
           const podeDeletar = isMe || isAdmin;
 
           return (
@@ -166,7 +194,6 @@ export function ChatComunidade() {
                 </div>
                 
                 <div className="flex items-center gap-2">
-                  {/* BOTÃO DE LIXEIRA (Aparece no hover) */}
                   {podeDeletar && (
                     <button 
                       onClick={() => handleDeletarMensagem(msg.id)}
@@ -174,6 +201,17 @@ export function ChatComunidade() {
                       title="Apagar mensagem"
                     >
                       <Trash2 size={14} />
+                    </button>
+                  )}
+
+                  {!isMe && !isAdmin && (
+                    <button 
+                      onClick={() => handleDenunciar(msg)}
+                      disabled={denunciando}
+                      className={`opacity-0 group-hover:opacity-100 transition-opacity text-muted hover:text-yellow-500 ${isMe ? 'order-first' : 'order-last'}`}
+                      title="Denunciar mensagem"
+                    >
+                      <Flag size={14} />
                     </button>
                   )}
                   

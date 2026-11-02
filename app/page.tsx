@@ -6,6 +6,7 @@ import { GridAnimes } from '@/components/lancamentos/GridAnimes';
 import { AnimeData } from '@/components/lancamentos/CardAnime';
 import { AlertCircle } from 'lucide-react';
 import { EspacoAnuncio } from '@/components/layout/EspacoAnuncio';
+import { MetaChat } from '@/components/layout/MetaChat'; // <-- NOVO IMPORT
 
 // Função para descobrir a temporada atual
 function getTemporadaAtual() {
@@ -96,6 +97,11 @@ export default function Home() {
           </p>
         </div>
       </header>
+
+      {/* META DO CHAT (CONTAGEM REGRESSIVA) */}
+      <div className="mb-8">
+        <MetaChat />
+      </div>
 
       <SeletorDias 
         diaSelecionado={diaSelecionado} 

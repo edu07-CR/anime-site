@@ -1,16 +1,17 @@
 'use client';
 
 import { useState, useEffect } from 'react';
-import { useRouter } from 'next/navigation'; // <-- IMPORT DO ROUTER
+import { useRouter } from 'next/navigation';
 import { createClient } from '@/lib/supabase/client';
 import { MessageCircle, Users, Loader2, Lock } from 'lucide-react';
 import Link from 'next/link';
 import Image from 'next/image';
 import { SeloAdmin } from '@/components/layout/SeloAdmin';
 import { ChatComunidade } from './ChatComunidade';
+import { MetaChat } from '@/components/layout/MetaChat'; // <-- NOVO IMPORT
 
 export default function MensagensPage() {
-  const router = useRouter(); // <-- INICIALIZA O ROUTER
+  const router = useRouter();
   const [abaAtiva, setAbaAtiva] = useState<'comunidade' | 'privadas'>('comunidade');
   const [conversas, setConversas] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
@@ -19,22 +20,24 @@ export default function MensagensPage() {
 
   useEffect(() => {
     const checkAndFetch = async () => {
-      // 1. VERIFICA SE ESTÁ LOGADO
       const { data: { user } } = await supabase.auth.getUser();
       if (!user) {
         router.push('/login');
         return;
       }
 
-      // 2. Verifica se o chat está bloqueado
-      const { data: config } = await supabase.from('site_config').select('chat_enabled').single();
-      if (config?.chat_enabled === false) {
-        setChatBloqueado(true);
-        setLoading(false);
-        return;
+      // Ignora o bloqueio do banco no localhost
+      const isDev = process.env.NODE_ENV === 'development';
+      
+      if (!isDev) {
+        const { data: config } = await supabase.from('site_config').select('chat_enabled').single();
+        if (config?.chat_enabled === false) {
+          setChatBloqueado(true);
+          setLoading(false);
+          return;
+        }
       }
 
-      // 3. Busca as conversas privadas
       const { data: mensagens } = await supabase
         .from('direct_messages')
         .select(`
@@ -70,7 +73,7 @@ export default function MensagensPage() {
       setLoading(false);
     };
     checkAndFetch();
-  }, [supabase, router]); // <-- ADICIONA ROUTER NAS DEPENDÊNCIAS
+  }, [supabase, router]);
 
   if (loading) {
     return <div className="flex justify-center items-center h-[50vh]"><Loader2 className="animate-spin text-accent" size={40} /></div>;
@@ -86,6 +89,12 @@ export default function MensagensPage() {
         <p className="text-muted max-w-md mx-auto mb-8">
           Estamos preparando a comunidade do AniVerse para você. O chat será liberado em breve!
         </p>
+        
+        {/* META DO CHAT (CONTAGEM REGRESSIVA) */}
+        <div className="w-full max-w-md mb-8">
+          <MetaChat />
+        </div>
+
         <Link href="/" className="bg-accent text-white font-bold px-8 py-3 rounded-lg hover:bg-accent/90 transition-colors shadow-lg shadow-accent/20">
           Voltar para os Lançamentos
         </Link>

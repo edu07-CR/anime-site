@@ -3,7 +3,7 @@
 import { useState, useEffect, useOptimistic, startTransition } from 'react';
 import { useRouter } from 'next/navigation';
 import { createClient } from '@/lib/supabase/client';
-import { Loader2, Sparkles, Heart, MessageCircle, AlertTriangle, X, Trash2, PlusCircle, Share2 } from 'lucide-react';
+import { Loader2, Sparkles, Heart, MessageCircle, AlertTriangle, X, Trash2, PlusCircle, Share2 } from 'lucide-react'; // <-- Removi ShieldBan
 import Image from 'next/image';
 import Link from 'next/link';
 import { CarrosselImagens } from '@/components/feed/CarrosselImagens';
@@ -14,7 +14,7 @@ import { SeloAdmin } from '@/components/layout/SeloAdmin';
 import { TopCriadores } from '@/components/feed/TopCriadores';
 import { CriadorPost } from '@/components/feed/CriadorPost';
 import { EspacoAnuncio } from '@/components/layout/EspacoAnuncio';
-import { TelaBloqueio } from '@/components/layout/TelaBloqueio'; // <-- IMPORT
+import { TelaBloqueio } from '@/components/layout/TelaBloqueio';
 
 const supabase = createClient();
 
@@ -79,24 +79,43 @@ export default function FeedPage() {
         return;
       }
 
-      const { data: config } = await supabase.from('site_config').select('feed_enabled').single();
-      if (config?.feed_enabled === false) {
-        setFeedBloqueado(true);
-        setLoading(false);
-        return;
+      const isDev = process.env.NODE_ENV === 'development';
+      
+      if (!isDev) {
+        const { data: config } = await supabase.from('site_config').select('feed_enabled').single();
+        if (config?.feed_enabled === false) {
+          setFeedBloqueado(true);
+          setLoading(false);
+          return;
+        }
       }
 
       setCurrentUserId(user.id);
       const { data: profile } = await supabase.from('profiles').select('is_admin').eq('id', user.id).single();
       if (profile?.is_admin) setIsAdmin(true);
 
-      const { data: postsData } = await supabase
+      // 1. Busca a lista de usuários bloqueados
+      const { data: blocks } = await supabase
+        .from('blocks')
+        .select('blocked_id')
+        .eq('blocker_id', user.id);
+      
+      const ids = blocks?.map(b => b.blocked_id) || [];
+
+      // 2. Busca os posts, filtrando os bloqueados
+      let query = supabase
         .from('posts')
         .select(`
           id, user_id, media_url, media_urls, media_type, caption, has_spoiler, created_at, is_ranking,
           profiles (username, avatar_url, is_admin)
         `)
         .order('created_at', { ascending: false });
+
+      if (ids.length > 0) {
+        query = query.not('user_id', 'in', `(${ids.join(',')})`);
+      }
+
+      const { data: postsData } = await query;
 
       if (postsData) {
         const postsComContagem = await Promise.all(

@@ -2,14 +2,14 @@
 
 import { useState, useEffect, useRef } from 'react';
 import { createClient } from '@/lib/supabase/client';
-import { Loader2, Send, ArrowLeft, Trash2 } from 'lucide-react';
+import { Loader2, Send, ArrowLeft, Trash2, ShieldBan } from 'lucide-react';
 import Image from 'next/image';
 import Link from 'next/link';
 import { useRouter, useParams } from 'next/navigation';
 import { formatDistanceToNow } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
 import { SeloAdmin } from '@/components/layout/SeloAdmin';
-import { TelaBloqueio } from '@/components/layout/TelaBloqueio'; // <-- IMPORT
+import { TelaBloqueio } from '@/components/layout/TelaBloqueio';
 
 interface Profile {
   id: string;
@@ -33,6 +33,7 @@ export default function MensagensPage() {
   const [newMessage, setNewMessage] = useState('');
   const [loading, setLoading] = useState(true);
   const [chatBloqueado, setChatBloqueado] = useState(false);
+  const [isBlocked, setIsBlocked] = useState(false);
   const [myUserId, setMyUserId] = useState<string | null>(null);
   const [isAdmin, setIsAdmin] = useState(false);
   const [targetProfile, setTargetProfile] = useState<Profile | null>(null);
@@ -42,14 +43,17 @@ export default function MensagensPage() {
   const router = useRouter();
 
   useEffect(() => {
-    let channel: any;
+    let channel: any = null;
 
     const init = async () => {
-      const { data: config } = await supabase.from('site_config').select('chat_enabled').single();
-      if (config?.chat_enabled === false) {
-        setChatBloqueado(true);
-        setLoading(false);
-        return;
+      const isDev = process.env.NODE_ENV === 'development';
+      if (!isDev) {
+        const { data: config } = await supabase.from('site_config').select('chat_enabled').single();
+        if (config?.chat_enabled === false) {
+          setChatBloqueado(true);
+          setLoading(false);
+          return;
+        }
       }
 
       const { data: { user } } = await supabase.auth.getUser();
@@ -69,6 +73,18 @@ export default function MensagensPage() {
         .single();
       if (profile) setTargetProfile(profile);
 
+      const { data: blockData } = await supabase
+        .from('blocks')
+        .select('id')
+        .or(`and(blocker_id.eq.${user.id},blocked_id.eq.${targetUserId}),and(blocker_id.eq.${targetUserId},blocked_id.eq.${user.id})`)
+        .maybeSingle();
+
+      if (blockData) {
+        setIsBlocked(true);
+        setLoading(false);
+        return;
+      }
+
       const { data: msgs } = await supabase
         .from('direct_messages')
         .select('*')
@@ -76,9 +92,10 @@ export default function MensagensPage() {
         .order('created_at', { ascending: true });
 
       if (msgs) setMessages(msgs);
-      setLoading(false);
       
       await supabase.from('direct_messages').update({ is_read: true }).eq('sender_id', targetUserId).eq('receiver_id', user.id).eq('is_read', false);
+      
+      setLoading(false);
 
       const channelName = `chat-privado-${targetUserId}-${Date.now()}`;
       channel = supabase.channel(channelName);
@@ -87,7 +104,7 @@ export default function MensagensPage() {
         'postgres_changes',
         { event: 'INSERT', schema: 'public', table: 'direct_messages' },
         (payload: any) => {
-          if (chatBloqueado) return;
+          if (isBlocked) return;
 
           const newMsg = payload.new as Message;
           if (
@@ -107,7 +124,7 @@ export default function MensagensPage() {
     return () => {
       if (channel) supabase.removeChannel(channel);
     };
-  }, [supabase, router, targetUserId, myUserId, chatBloqueado]);
+  }, [supabase, router, targetUserId]); // <-- CORRIGIDO: Removido myUserId e chatBloqueado
 
   useEffect(() => {
     bottomRef.current?.scrollIntoView({ behavior: 'smooth' });
@@ -115,16 +132,37 @@ export default function MensagensPage() {
 
   const handleEnviar = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!newMessage.trim() || !myUserId || chatBloqueado) return;
+    if (!newMessage.trim() || !myUserId || chatBloqueado || isBlocked) return;
 
+    // 1. Verifica o Rate Limit via API
+    const rateRes = await fetch('/api/rate-limit', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ userId: myUserId })
+    });
+    
+    const rateData = await rateRes.json();
+
+    if (!rateData.success) {
+      const segundosRestantes = Math.ceil((rateData.reset - Date.now()) / 1000);
+      alert(`Você está enviando mensagens muito rápido. Aguarde ${segundosRestantes} segundos.`);
+      return;
+    }
+
+    // 2. Prossegue com o envio
     const msg = newMessage;
     setNewMessage('');
 
-    await supabase.from('direct_messages').insert({
+    const { error } = await supabase.from('direct_messages').insert({
       sender_id: myUserId,
       receiver_id: targetUserId,
       content: msg
     });
+
+    if (error) {
+      alert('Não foi possível enviar a mensagem. Você pode ter sido bloqueado por este usuário.');
+      setNewMessage(msg);
+    }
   };
 
   const handleDeletarMensagem = async (id: string) => {
@@ -154,6 +192,26 @@ export default function MensagensPage() {
           </p>
         }
       />
+    );
+  }
+
+  if (isBlocked) {
+    return (
+      <div className="w-full max-w-3xl mx-auto py-8 flex flex-col h-[85vh]">
+        <div className="bg-surface border border-border rounded-2xl flex flex-col flex-1 overflow-hidden shadow-lg items-center justify-center p-8 text-center">
+          <ShieldBan size={64} className="text-red-500 mb-4" />
+          <h2 className="text-2xl font-bold text-text mb-2">Usuário Bloqueado</h2>
+          <p className="text-muted mb-6">
+            Não é possível enviar ou receber mensagens deste usuário.
+          </p>
+          <Link 
+            href="/mensagens" 
+            className="bg-accent text-white font-bold px-6 py-3 rounded-lg hover:bg-accent/90 transition-colors"
+          >
+            Voltar para Mensagens
+          </Link>
+        </div>
+      </div>
     );
   }
 
