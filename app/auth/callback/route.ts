@@ -1,33 +1,33 @@
-import { NextResponse } from 'next/server';
-import { createClient } from '@/lib/supabase/server';
+import { NextResponse } from 'next/server'
+import { createClient } from '@/lib/supabase/server'
 
 export async function GET(request: Request) {
-  const { searchParams, origin } = new URL(request.url);
-  const code = searchParams.get('code');
-  const next = searchParams.get('next') ?? '/';
+  const { searchParams, origin } = new URL(request.url)
+  const code = searchParams.get('code')
+  let next = searchParams.get('next') ?? '/'
+  
+  if (!next.startsWith('/')) {
+    next = '/'
+  }
 
   if (code) {
-    const supabase = await createClient();
-    const { error } = await supabase.auth.exchangeCodeForSession(code);
+    const supabase = await createClient()
+    const { error } = await supabase.auth.exchangeCodeForSession(code)
     
     if (!error) {
-      // Verifica se o usuário já tem um username
-      const { data: { user } } = await supabase.auth.getUser();
-      const { data: profile } = await supabase
-        .from('profiles')
-        .select('username')
-        .eq('id', user?.id)
-        .single();
-
-      // Se não tiver username, manda para completar o perfil
-      if (!profile?.username) {
-        return NextResponse.redirect(`${origin}/completar-perfil`);
+      // Se estiver no localhost, redireciona direto
+      if (process.env.NODE_ENV === 'development') {
+        return NextResponse.redirect(`${origin}${next}`)
       }
-
-      // Se já tiver, segue o fluxo normal
-      return NextResponse.redirect(`${origin}${next}`);
+      // Em produção, usa o host correto
+      const forwardedHost = request.headers.get('x-forwarded-host')
+      if (forwardedHost) {
+        return NextResponse.redirect(`https://${forwardedHost}${next}`)
+      }
+      return NextResponse.redirect(`${origin}${next}`)
     }
   }
 
-  return NextResponse.redirect(`${origin}/login?error=Could not authenticate`);
+  // Se algo der errado, volta para o login com erro
+  return NextResponse.redirect(`${origin}/login?error=Could not authenticate`)
 }
