@@ -8,7 +8,7 @@ import Link from 'next/link';
 import Image from 'next/image';
 import { SeloAdmin } from '@/components/layout/SeloAdmin';
 import { ChatComunidade } from './ChatComunidade';
-import { MetaChat } from '@/components/layout/MetaChat'; // <-- NOVO IMPORT
+import { MetaChat } from '@/components/layout/MetaChat'; // <-- IMPORT
 
 export default function MensagensPage() {
   const router = useRouter();
@@ -26,7 +26,6 @@ export default function MensagensPage() {
         return;
       }
 
-      // Ignora o bloqueio do banco no localhost
       const isDev = process.env.NODE_ENV === 'development';
       
       if (!isDev) {
@@ -79,28 +78,40 @@ export default function MensagensPage() {
     return <div className="flex justify-center items-center h-[50vh]"><Loader2 className="animate-spin text-accent" size={40} /></div>;
   }
 
+  // =========================================================
+  // TELA DE BLOQUEIO COM A META
+  // =========================================================
   if (chatBloqueado) {
     return (
-      <div className="flex flex-col items-center justify-center min-h-[70vh] text-center px-4">
-        <div className="bg-surface border border-border p-6 rounded-full mb-6">
-          <Lock size={48} className="text-muted" />
-        </div>
-        <h2 className="text-3xl font-bold text-text mb-4">Chat em Manutenção</h2>
-        <p className="text-muted max-w-md mx-auto mb-8">
-          Estamos preparando a comunidade do AniVerse para você. O chat será liberado em breve!
-        </p>
+      <div className="w-full max-w-3xl mx-auto py-8 flex flex-col items-center justify-center min-h-[70vh]">
         
-        {/* META DO CHAT (CONTAGEM REGRESSIVA) */}
+        {/* Cabeçalho da Tela de Bloqueio */}
+        <div className="flex flex-col items-center text-center mb-8">
+          <div className="bg-surface border border-border p-6 rounded-full mb-6">
+            <Lock size={48} className="text-muted" />
+          </div>
+          <h2 className="text-3xl font-bold text-text mb-2">Chat em Manutenção</h2>
+          <p className="text-muted max-w-md">
+            Estamos preparando a comunidade do AniVerse para você. O chat será liberado em breve!
+          </p>
+        </div>
+
+        {/* Componente da Meta (A Barra de Progresso) */}
         <div className="w-full max-w-md mb-8">
           <MetaChat />
         </div>
 
-        <Link href="/" className="bg-accent text-white font-bold px-8 py-3 rounded-lg hover:bg-accent/90 transition-colors shadow-lg shadow-accent/20">
+        {/* Botão de Voltar */}
+        <Link 
+          href="/" 
+          className="bg-accent text-white font-bold px-8 py-3 rounded-lg hover:bg-accent/90 transition-colors shadow-lg shadow-accent/20"
+        >
           Voltar para os Lançamentos
         </Link>
       </div>
     );
   }
+  // =========================================================
 
   return (
     <div className="w-full max-w-3xl mx-auto py-8">
