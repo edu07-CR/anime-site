@@ -9,7 +9,7 @@ export function CriadorPost({ onClose }: { onClose: () => void }) {
   const [legenda, setLegenda] = useState('');
   const [files, setFiles] = useState<File[]>([]);
   const [previews, setPreviews] = useState<string[]>([]);
-  const [isRanking, setIsRanking] = useState(false); // Estado do checkbox
+  const [isRanking, setIsRanking] = useState(false);
   const [loading, setLoading] = useState(false);
   const [erro, setErro] = useState('');
   
@@ -48,9 +48,12 @@ export function CriadorPost({ onClose }: { onClose: () => void }) {
       const { data: { user } } = await supabase.auth.getUser();
       if (!user) throw new Error('Você precisa estar logado.');
 
+      // A MÁGICA ACONTECE AQUI: Se for ranking, invertemos a ordem dos arquivos antes de subir.
+      // Assim, o "1º lugar" que está na direita da tela vira o ÚLTIMO item do array salvo no banco.
+      const filesToUpload = files;
       const mediaUrls: string[] = [];
 
-      for (const file of files) {
+      for (const file of filesToUpload) {
         const fileName = `post-${user.id}-${Date.now()}-${Math.random().toString(36).substring(7)}.png`;
         const { error: uploadError } = await supabase.storage.from('feed_media').upload(fileName, file);
         if (uploadError) throw new Error(`Falha no upload: ${uploadError.message}`);
@@ -61,11 +64,11 @@ export function CriadorPost({ onClose }: { onClose: () => void }) {
 
       const { error: postError } = await supabase.from('posts').insert({
         user_id: user.id,
-        media_url: mediaUrls[0] || null,
+        media_url: mediaUrls[0] || null, 
         media_urls: mediaUrls.length > 0 ? mediaUrls : null,
         media_type: mediaUrls.length > 0 ? 'image' : 'text', 
         caption: legenda,
-        is_ranking: isRanking && mediaUrls.length > 0, // Só é ranking se tiver imagem
+        is_ranking: isRanking && mediaUrls.length > 0, 
       });
 
       if (postError) throw new Error(postError.message);
@@ -101,17 +104,27 @@ export function CriadorPost({ onClose }: { onClose: () => void }) {
 
           {previews.length > 0 && (
             <div className="grid grid-cols-3 gap-2">
-              {previews.map((preview, index) => (
-                <div key={index} className="relative aspect-square rounded-lg overflow-hidden bg-black">
-                  <Image src={preview} alt={`Preview ${index}`} fill className="object-cover" />
-                  <button 
-                    onClick={() => removerImagem(index)}
-                    className="absolute top-1 right-1 bg-black/70 text-white p-1 rounded-full hover:bg-red-500"
-                  >
-                    <X size={12} />
-                  </button>
-                </div>
-              ))}
+              {previews.map((preview, index) => {
+                const numeroRanking = previews.length - index;
+                return (
+                  <div key={index} className="relative aspect-square rounded-lg overflow-hidden bg-black group">
+                    <Image src={preview} alt={`Preview ${index}`} fill className="object-cover" />
+                    
+                    {isRanking && (
+                      <div className="absolute top-1 left-1 bg-accent text-white text-xs font-bold w-6 h-6 flex items-center justify-center rounded-full shadow-md z-10 border border-white/20">
+                        {numeroRanking}º
+                      </div>
+                    )}
+
+                    <button 
+                      onClick={() => removerImagem(index)}
+                      className="absolute top-1 right-1 bg-black/70 text-white p-1 rounded-full hover:bg-red-500 transition-colors z-10"
+                    >
+                      <X size={12} />
+                    </button>
+                  </div>
+                );
+              })}
             </div>
           )}
 
@@ -133,10 +146,8 @@ export function CriadorPost({ onClose }: { onClose: () => void }) {
           />
         </div>
 
-        {/* RODAPÉ COM O CHECKBOX E O BOTÃO POSTAR */}
         <div className="p-4 border-t border-border flex flex-col gap-3">
           
-          {/* CHECKBOX MOVIDO PARA CÁ */}
           <div className="flex items-center gap-2">
             <input 
               type="checkbox" 

@@ -3,7 +3,7 @@
 import { useState, useEffect, useOptimistic, startTransition } from 'react';
 import { useRouter } from 'next/navigation';
 import { createClient } from '@/lib/supabase/client';
-import { Loader2, Sparkles, Heart, MessageCircle, AlertTriangle, X, Trash2, PlusCircle, Share2 } from 'lucide-react'; // <-- Removi ShieldBan
+import { Loader2, Sparkles, Heart, MessageCircle, AlertTriangle, X, Trash2, PlusCircle, Share2 } from 'lucide-react';
 import Image from 'next/image';
 import Link from 'next/link';
 import { CarrosselImagens } from '@/components/feed/CarrosselImagens';
@@ -12,6 +12,7 @@ import { toggleLike } from '@/app/actions/feed';
 import { deletarPost } from '@/app/actions/posts';
 import { SeloAdmin } from '@/components/layout/SeloAdmin';
 import { TopCriadores } from '@/components/feed/TopCriadores';
+import { TrendingAnimes } from '@/components/feed/TrendingAnimes';
 import { CriadorPost } from '@/components/feed/CriadorPost';
 import { EspacoAnuncio } from '@/components/layout/EspacoAnuncio';
 import { TelaBloqueio } from '@/components/layout/TelaBloqueio';
@@ -44,6 +45,7 @@ export default function FeedPage() {
   const [currentUserId, setCurrentUserId] = useState<string | null>(null);
   const [isAdmin, setIsAdmin] = useState(false);
   const [criadorAberto, setCriadorAberto] = useState(false);
+  const [curtindo, setCurtindo] = useState<string | null>(null);
 
   const getImagensOrdenadas = (post: Post) => {
     if (!post.media_urls || post.media_urls.length === 0) {
@@ -94,7 +96,6 @@ export default function FeedPage() {
       const { data: profile } = await supabase.from('profiles').select('is_admin').eq('id', user.id).single();
       if (profile?.is_admin) setIsAdmin(true);
 
-      // 1. Busca a lista de usuários bloqueados
       const { data: blocks } = await supabase
         .from('blocks')
         .select('blocked_id')
@@ -102,7 +103,6 @@ export default function FeedPage() {
       
       const ids = blocks?.map(b => b.blocked_id) || [];
 
-      // 2. Busca os posts, filtrando os bloqueados
       let query = supabase
         .from('posts')
         .select(`
@@ -143,19 +143,29 @@ export default function FeedPage() {
     };
 
     checkAndFetch();
-  }, [supabase, router]);
+  }, []);
 
   const handleLike = (post: Post) => {
+    if (curtindo === post.id) return; 
+    setCurtindo(post.id);
+
     startTransition(async () => {
       addOptimisticLike({ postId: post.id, isLiked: post.user_has_liked });
-      await toggleLike(post.id, post.user_has_liked);
-      setPosts((prev) => 
-        prev.map((p) => 
-          p.id === post.id 
-            ? { ...p, user_has_liked: !post.user_has_liked, likes_count: post.user_has_liked ? p.likes_count - 1 : p.likes_count + 1 } 
-            : p
-        )
-      );
+      
+      try {
+        await toggleLike(post.id, post.user_has_liked);
+        setPosts((prev) => 
+          prev.map((p) => 
+            p.id === post.id 
+              ? { ...p, user_has_liked: !post.user_has_liked, likes_count: post.user_has_liked ? p.likes_count - 1 : p.likes_count + 1 } 
+              : p
+          )
+        );
+      } catch (error) {
+        console.error(error);
+      } finally {
+        setCurtindo(null);
+      }
     });
   };
 
@@ -163,17 +173,19 @@ export default function FeedPage() {
     if (!confirm('Tem certeza que deseja deletar este post?')) return;
 
     try {
-      await deletarPost(post.id, post.media_urls || []);
       setPosts((prev) => prev.filter((p) => p.id !== post.id));
+      await deletarPost(post.id, post.media_urls || []);
+      router.refresh(); 
     } catch (error: any) {
       alert(error.message || 'Erro ao deletar o post.');
+      router.refresh();
     }
   };
 
   const handleCompartilhar = (postId: string) => {
     const url = `${window.location.origin}/feed/${postId}`;
     navigator.clipboard.writeText(url);
-    alert('Link copiado para compartilhar no WhatsApp!');
+    alert('Link copiado para compartilhar!');
   };
 
   if (loading) {
@@ -200,7 +212,7 @@ export default function FeedPage() {
   }
 
   return (
-    <div className="w-full max-w-6xl mx-auto py-8 px-4">
+    <div className="w-full max-w-[90rem] mx-auto py-8 px-4 lg:px-8">
       
       {imagemAberta && (
         <div className="fixed inset-0 z-[200] bg-black/90 flex items-center justify-center p-4 backdrop-blur-sm overflow-y-auto" onClick={() => setImagemAberta(null)}>
@@ -219,11 +231,15 @@ export default function FeedPage() {
         <CriadorPost onClose={() => setCriadorAberto(false)} />
       )}
 
-      <div className="grid grid-cols-1 lg:grid-cols-12 gap-8 items-start">
+      <div className="grid grid-cols-1 lg:grid-cols-12 gap-6 lg:gap-12 xl:gap-16 items-start">
         
-        <div className="hidden lg:block lg:col-span-2"></div>
+        {/* ====== COLUNA ESQUERDA: EM ALTA ====== */}
+        <div className="hidden lg:block lg:col-span-3 sticky top-24">
+          <TrendingAnimes />
+        </div>
 
-        <div className="lg:col-span-6 w-full max-w-md mx-auto lg:mx-0">
+        {/* ====== COLUNA CENTRAL: FEED ====== */}
+        <div className="lg:col-span-6 w-full max-w-lg mx-auto justify-self-center">
           
           <div className="flex items-center justify-between mb-6 w-full">
             <div className="flex items-center gap-3">
@@ -241,6 +257,11 @@ export default function FeedPage() {
 
           <div className="mb-6">
             <EspacoAnuncio formato="banner" />
+          </div>
+
+          {/* ====== TOP CRIADORES NO MOBILE (Só aparece no celular) ====== */}
+          <div className="block lg:hidden mb-6">
+            <TopCriadores />
           </div>
 
           {optimisticLikes.length === 0 ? (
@@ -297,7 +318,7 @@ export default function FeedPage() {
                   </div>
 
                   {getImagensOrdenadas(post).length > 0 ? (
-                    <div className="cursor-pointer relative" onClick={() => setImagemAberta(post)}>
+                    <div className="cursor-pointer relative max-h-[500px] overflow-hidden bg-black/5 flex items-center justify-center" onClick={() => setImagemAberta(post)}>
                       <CarrosselImagens imagens={getImagensOrdenadas(post)} isRanking={post.is_ranking} />
                       {post.has_spoiler && (
                         <div className="absolute top-2 right-2 bg-red-500 text-white text-xs font-bold px-2 py-1 rounded-md flex items-center gap-1 z-10">
@@ -315,7 +336,11 @@ export default function FeedPage() {
                     {post.caption && getImagensOrdenadas(post).length > 0 && <p className="text-sm text-text mb-3 line-clamp-2">{post.caption}</p>}
                     
                     <div className="flex items-center gap-4 text-muted text-sm">
-                      <button onClick={() => handleLike(post)} className={`flex items-center gap-1 transition-colors cursor-pointer ${post.user_has_liked ? 'text-red-500' : 'hover:text-red-500'}`}>
+                      <button 
+                        onClick={() => handleLike(post)} 
+                        disabled={curtindo === post.id}
+                        className={`flex items-center gap-1 transition-colors cursor-pointer disabled:opacity-50 ${post.user_has_liked ? 'text-red-500' : 'hover:text-red-500'}`}
+                      >
                         <Heart size={18} fill={post.user_has_liked ? "currentColor" : "none"} /> {post.likes_count}
                       </button>
                       <button onClick={() => setPostComentariosAberto(post)} className="flex items-center gap-1 hover:text-blue-500 transition-colors cursor-pointer">
@@ -330,7 +355,8 @@ export default function FeedPage() {
           )}
         </div>
 
-        <div className="lg:col-span-4 w-full max-w-md mx-auto lg:mx-0 lg:sticky lg:top-24">
+        {/* ====== COLUNA DIREITA: RANKING ====== */}
+        <div className="lg:col-span-3 w-full max-w-md mx-auto lg:mx-0 lg:sticky lg:top-24">
           <TopCriadores />
           <div className="mt-6">
             <EspacoAnuncio formato="vertical" />

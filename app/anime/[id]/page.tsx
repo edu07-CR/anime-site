@@ -1,7 +1,7 @@
 import Image from 'next/image';
 import Link from 'next/link';
 import { ArrowLeft, Star } from 'lucide-react';
-import { AcoesAnime } from '@/components/anime/AcoesAnime';
+import { BotaoEsperaAniList } from '@/components/anime/BotaoEsperaAniList'; // <-- NOVO IMPORT
 import { BotaoTrailer } from '@/components/anime/BotaoTrailer';
 import { SecaoComentarios } from '@/components/anime/SecaoComentarios'; 
 import { EspacoAnuncio } from '@/components/layout/EspacoAnuncio';
@@ -172,7 +172,7 @@ export default async function AnimePage({ params }: { params: Promise<{ id: stri
             {/* INFORMAÇÕES + SINOPSE + COMENTÁRIOS */}
             <div className="w-full md:w-2/3 flex flex-col">
               
-              {/* Informações Básicas (Contraste Melhorado) */}
+              {/* Informações Básicas */}
               <div className="flex items-center gap-3 mb-2 text-text/80 text-sm font-semibold">
                 <span>{anime.seasonYear || 'Ano Desconhecido'}</span>
                 <span>•</span>
@@ -186,12 +186,10 @@ export default async function AnimePage({ params }: { params: Promise<{ id: stri
               </h1>
 
               <div className="flex items-center gap-4 mb-6">
-                {/* Nota com Cores Melhoradas */}
                 <div className="flex items-center gap-1 text-yellow-600 font-bold text-lg bg-yellow-400/20 px-3 py-1 rounded-lg border border-yellow-400/30">
                   <Star size={20} fill="currentColor" />
                   {anime.averageScore ? (anime.averageScore / 10).toFixed(1) : 'N/A'}
                 </div>
-                {/* Estúdio com Contraste Melhorado */}
                 <div className="text-text/80 text-sm">
                   Estúdio: <span className="text-text font-medium">{studio}</span>
                 </div>
@@ -205,17 +203,19 @@ export default async function AnimePage({ params }: { params: Promise<{ id: stri
                 ))}
               </div>
 
-              <div className="flex flex-col gap-5">
-                <AcoesAnime animeId={anime.id} />
-                <div className="-mt-4">
+              <div className="flex flex-col gap-6">
+                {/* AQUI FOI SUBSTITUÍDO O ACOESANIME PELO BOTAO DE ESPERA */}
+                 <div className="w-full">
+                 <BotaoEsperaAniList />
+                  </div>
+                <div className="-mt-3">
                   <OndeAssistir tituloAnime={title} animeId={anime.id} />
                 </div>
                 
-                {/* BANNER DE PRODUTOS GEEK */}
                 <BannerGeek tituloAnime={title} />
               </div>
 
-              {/* SINOPSE com Contraste Melhorado */}
+              {/* SINOPSE */}
               <div className="mb-8 mt-6">
                 <h2 className="text-xl font-bold text-text mb-3">Sinopse</h2>
                 <p className="text-text/80 leading-relaxed text-sm md:text-base">

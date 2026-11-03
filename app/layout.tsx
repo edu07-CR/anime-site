@@ -27,9 +27,8 @@ export const metadata: Metadata = {
   description: "Acompanhe os lançamentos de animes da semana, crie seu Top 10 pessoal, converse no chat da comunidade e descubra os animes mais populares da temporada.",
   keywords: ["anime", "lançamentos de anime", "top 10 animes", "calendário de animes", "animes da temporada", "chat de anime"],
   
-  // ADICIONADO AQUI: Configuração do Favicon para o Google
   icons: {
-    icon: '/icon.svg', // Certifique-se de que o arquivo existe na pasta public
+    icon: '/icon.svg',
   },
 
   openGraph: {
@@ -75,7 +74,8 @@ export default async function RootLayout({
     <html lang="pt-BR">
       <body className={`${geistSans.variable} ${geistMono.variable} antialiased min-h-screen flex flex-col bg-bg`}>
         <Navbar />
-        <main className="flex-1 w-full max-w-7xl mx-auto px-4 md:px-6 pt-6 pb-24 md:pb-12">
+        {/* REMOVIDO max-w-7xl mx-auto: Agora o main ocupa 100% da tela */}
+        <main className="flex-1 w-full px-4 md:px-6 pt-6 pb-24 md:pb-12">
           {children}
         </main>
         <Footer />
