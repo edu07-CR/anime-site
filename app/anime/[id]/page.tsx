@@ -205,7 +205,7 @@ export default async function AnimePage({ params }: { params: Promise<{ id: stri
 
               <div className="flex flex-col gap-6">
                 {/* AQUI FOI SUBSTITUÍDO O ACOESANIME PELO BOTAO DE ESPERA */}
-                 <div className="w-full">
+                 <div className="w">
                  <BotaoEsperaAniList />
                   </div>
                 <div className="-mt-3">

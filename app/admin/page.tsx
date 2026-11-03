@@ -2,7 +2,7 @@ import { createClient as createSupabaseClient } from '@supabase/supabase-js';
 import { createClient as createServerClient } from '@/lib/supabase/server';
 import { redirect } from 'next/navigation';
 import Link from 'next/link';
-import { ShieldAlert, Users, MessageSquare, ArrowLeft, Star, MessageSquareWarning, Tv, Eye } from 'lucide-react';
+import { ShieldAlert, Users, MessageSquare, ArrowLeft, Star, MessageSquareWarning, Tv, Eye, Flag, Trash2, ExternalLink } from 'lucide-react';
 import { BotaoNotificar } from '@/components/admin/BotaoNotificar';
 import { ToggleChat } from '@/components/admin/ToggleChat';
 import { ToggleFeed } from '@/components/admin/ToggleFeed';
@@ -10,10 +10,19 @@ import { CardFeedback } from '@/components/admin/CardFeedback';
 import { GerenciarStreaming } from '@/components/admin/GerenciarStreaming';
 import { GraficoAnalytics } from '@/components/admin/GraficoAnalytics';
 
-// 1. Definimos o tipo que o gráfico espera receber
 interface AnalyticsData {
   date: string;
   visitors: number;
+}
+
+interface Denuncia {
+  id: string;
+  post_id: string;
+  reporter_username: string;
+  reason: string;
+  created_at: string;
+  post_caption: string | null;
+  post_user_username: string;
 }
 
 export const dynamic = 'force-dynamic';
@@ -33,24 +42,23 @@ export default async function AdminPage() {
     { auth: { autoRefreshToken: false, persistSession: false } }
   );
 
-  // 1. Busca a configuração do site
   const { data: config } = await supabaseAdmin.from('site_config').select('chat_enabled, feed_enabled').single();
   const chatAtivo = config?.chat_enabled ?? true;
   const feedAtivo = config?.feed_enabled ?? true;
 
-  // 2. Busca usuários e estatísticas
   const { data: users } = await supabaseAdmin.from('profiles').select('id, username, avatar_url, created_at').order('created_at', { ascending: false });
   const { data: allStatus } = await supabaseAdmin.from('user_anime').select('user_id, status, rating');
 
-  // 3. Busca os feedbacks (só para admin)
   const { data: feedbacks } = await supabaseAdmin
     .from('feedbacks')
     .select('*, profiles(username)')
     .order('created_at', { ascending: false })
     .limit(20);
 
-  // 4. Busca os dados de Analytics da Vercel
-  // 2. Tipamos a variável com o array correto
+  // --- BUSCA AS DENÚNCIAS DE POSTS ---
+  const { data: denuncias } = await supabaseAdmin.rpc('get_denuncias_posts');
+  // -----------------------------------
+
   let analyticsData: AnalyticsData[] = [];
   try {
     const vercelRes = await fetch('https://api.vercel.com/v1/query/web-analytics/visits/aggregate?projectId=' + process.env.VERCEL_PROJECT_ID, {
@@ -148,7 +156,6 @@ export default async function AdminPage() {
           <div className="p-3 bg-blue-500/10 rounded-lg text-blue-500"><MessageSquare size={24} /></div>
           <div><p className="text-sm text-muted">Animes Marcados</p><p className="text-2xl font-bold text-text">{allStatus?.length || 0}</p></div>
         </div>
-        {/* NOVO CARD DE VISITAS TOTAIS */}
         <div className="bg-surface border border-border p-6 rounded-xl flex items-center gap-4">
           <div className="p-3 bg-green-500/10 rounded-lg text-green-500"><Eye size={24} /></div>
           <div>
@@ -169,6 +176,66 @@ export default async function AdminPage() {
           </div>
         </div>
         <GraficoAnalytics data={analyticsData} />
+      </div>
+
+      {/* NOVO BLOCO DE DENÚNCIAS */}
+      <div className="flex items-center gap-2 mb-4">
+        <Flag className="text-red-500" size={24} />
+        <h2 className="text-xl font-bold text-text">Denúncias de Posts</h2>
+      </div>
+      
+      <div className="bg-surface border border-border rounded-xl overflow-hidden mb-10">
+        {denuncias?.length === 0 ? (
+          <p className="p-6 text-muted text-sm">Nenhuma denúncia pendente.</p>
+        ) : (
+          <div className="divide-y divide-border">
+            {denuncias?.map((d: Denuncia) => (
+              <div key={d.id} className="p-4 flex flex-col md:flex-row items-start md:items-center justify-between gap-4">
+                <div>
+                  <p className="text-sm text-text">
+                    <strong className="text-red-500">@{d.reporter_username}</strong> denunciou o post de <strong className="text-text">@{d.post_user_username}</strong>
+                  </p>
+                  <p className="text-xs text-muted mt-1">
+                    Motivo: <span className="text-text">{d.reason}</span>
+                  </p>
+                  <p className="text-xs text-muted mt-1">
+                    Conteúdo: <span className="italic">"{d.post_caption || '(Sem texto)'}"</span>
+                  </p>
+                </div>
+                <div className="flex items-center gap-2 shrink-0">
+                  <Link 
+                    href={`/feed/${d.post_id}`}
+                    target="_blank"
+                    className="flex items-center gap-1 text-sm text-blue-500 hover:underline px-2 py-1"
+                  >
+                    <ExternalLink size={14} /> Ver Post
+                  </Link>
+                  <form action={async () => {
+                    'use server';
+                    const supabaseAction = await createServerClient();
+                    await supabaseAction.from('post_reports').delete().eq('id', d.id);
+                    redirect('/admin');
+                  }}>
+                    <button type="submit" className="flex items-center gap-1 text-sm text-muted hover:text-text border border-border px-3 py-1 rounded-lg hover:bg-bg">
+                      Ignorar
+                    </button>
+                  </form>
+                  <form action={async () => {
+                    'use server';
+                    const supabaseAction = await createServerClient();
+                    await supabaseAction.from('posts').delete().eq('id', d.post_id);
+                    await supabaseAction.from('post_reports').delete().eq('post_id', d.post_id);
+                    redirect('/admin');
+                  }}>
+                    <button type="submit" className="flex items-center gap-1 text-sm text-white bg-red-500 hover:bg-red-600 px-3 py-1 rounded-lg">
+                      <Trash2 size={14} /> Deletar
+                    </button>
+                  </form>
+                </div>
+              </div>
+            ))}
+          </div>
+        )}
       </div>
 
       {/* TABELA DE USUÁRIOS */}

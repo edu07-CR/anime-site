@@ -2,7 +2,12 @@
 import type { NextConfig } from "next";
 
 const nextConfig: NextConfig = {
-  // ... suas outras configurações (reactStrictMode, etc.)
+  // Aumenta o limite de payload para as Server Actions (upload de imagens)
+  experimental: {
+    serverActions: {
+      bodySizeLimit: '5mb',
+    },
+  },
 
   images: {
     remotePatterns: [
