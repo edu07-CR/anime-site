@@ -159,8 +159,8 @@ export default function Top10Page() {
   };
 
   const handleCompartilhar = async () => {
-    // MUDANÇA AQUI: Agora aponta para a página pública de compartilhamento
-    const url = `${window.location.origin}/top10/compartilhar/${username}`;
+    // Link atualizado para a nova estrutura de pastas
+    const url = `${window.location.origin}/compartilhar/${username}`;
     const shareData = {
       title: `Top 10 de ${username} no AniVerse`,
       text: `Olha o meu Top 10 de animes no AniVerse!`,
