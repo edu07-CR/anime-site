@@ -159,7 +159,8 @@ export default function Top10Page() {
   };
 
   const handleCompartilhar = async () => {
-    const url = `${window.location.origin}/perfil/${username}`;
+    // MUDANÇA AQUI: Agora aponta para a página pública de compartilhamento
+    const url = `${window.location.origin}/top10/compartilhar/${username}`;
     const shareData = {
       title: `Top 10 de ${username} no AniVerse`,
       text: `Olha o meu Top 10 de animes no AniVerse!`,
@@ -171,7 +172,7 @@ export default function Top10Page() {
         await navigator.share(shareData);
       } else {
         await navigator.clipboard.writeText(url);
-        alert('Link do seu perfil copiado para a área de transferência!');
+        alert('Link do seu Top 10 copiado para a área de transferência!');
       }
     } catch (error) {
       console.log('Compartilhamento cancelado', error);
