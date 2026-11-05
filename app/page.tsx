@@ -6,9 +6,8 @@ import { GridAnimes } from '@/components/lancamentos/GridAnimes';
 import { AnimeData } from '@/components/lancamentos/CardAnime';
 import { AlertCircle } from 'lucide-react';
 import { EspacoAnuncio } from '@/components/layout/EspacoAnuncio';
-import { MetaChat } from '@/components/layout/MetaChat'; // <-- NOVO IMPORT
+import { MetaChat } from '@/components/layout/MetaChat'; 
 
-// Função para descobrir a temporada atual
 function getTemporadaAtual() {
   const data = new Date();
   const mes = data.getMonth(); 
@@ -29,8 +28,8 @@ export default function Home() {
   const [isLoading, setIsLoading] = useState<boolean>(true);
   const [temporada, setTemporada] = useState<string>('');
   const [erroApi, setErroApi] = useState<string | null>(null);
+  const [reloadTrigger, setReloadTrigger] = useState<number>(0);
 
-  // Define o dia de hoje e a temporada ao abrir
   useEffect(() => {
     setTemporada(getTemporadaAtual());
 
@@ -45,7 +44,6 @@ export default function Home() {
     setDiaSelecionado(mapaDias[diaSemanaString] || 'qua');
   }, []);
 
-  // Busca os animes
   useEffect(() => {
     if (!diaSelecionado) return;
 
@@ -54,7 +52,9 @@ export default function Home() {
       setErroApi(null); 
       
       try {
-        const res = await fetch(`/api/test-anilist?dia=${diaSelecionado}`);
+        const res = await fetch(`/api/test-anilist?dia=${diaSelecionado}&t=${reloadTrigger}`, {
+          cache: 'no-store'
+        });
         
         if (!res.ok) {
           throw new Error("Falha na resposta do servidor");
@@ -63,7 +63,7 @@ export default function Home() {
         const data = await res.json();
         
         if (data.error) {
-          setErroApi("Nossos servidores podem estar em manutenção.");
+          setErroApi(data.error || "Estamos com dificuldades para carregar os dados no momento.");
           setAnimes([]);
         } else {
           setAnimes(data.animesDeHoje || []);
@@ -76,13 +76,12 @@ export default function Home() {
       }
     }
     fetchAnimes();
-  }, [diaSelecionado]);
+  }, [diaSelecionado, reloadTrigger]);
 
   return (
     <div className="w-full">
       <header className="mb-8 flex flex-col md:flex-row md:items-end justify-between gap-2">
         <div>
-          {/* Título Principal (H1) */}
           <h1 className="text-2xl md:text-3xl font-bold text-text flex items-center gap-3">
             Lançamentos da Semana
             {temporada && (
@@ -91,14 +90,12 @@ export default function Home() {
               </span>
             )}
           </h1>
-          {/* Texto de Apoio (Contraste Melhorado) */}
           <p className="text-text/80 text-sm mt-2">
             Acompanhe os episódios que saem hoje e nos próximos dias.
           </p>
         </div>
       </header>
 
-      {/* META DO CHAT (CONTAGEM REGRESSIVA) */}
       <div className="mb-8">
         <MetaChat />
       </div>
@@ -109,17 +106,15 @@ export default function Home() {
       />
 
       <div className="mt-8">
-        {/* Título da Seção (H2) para organizar a hierarquia */}
         <h2 className="sr-only">Animes de Hoje</h2> 
 
-        {/* MUDANÇA AQUI: Em vez de tela de erro, mostramos um aviso amigável */}
         {erroApi && !isLoading ? (
           <div className="flex flex-col items-center justify-center py-12 px-4 text-center bg-surface rounded-xl border border-border">
             <AlertCircle size={48} className="text-yellow-500 mb-4" />
             <h3 className="text-lg font-bold text-text mb-2">Estamos atualizando os lançamentos</h3>
             <p className="text-muted text-sm max-w-md mb-6">{erroApi} Enquanto isso, explore os animes em destaque na nossa página inicial.</p>
             <button 
-              onClick={() => setDiaSelecionado(diaSelecionado)} 
+              onClick={() => setReloadTrigger(prev => prev + 1)} 
               className="px-6 py-2 bg-accent text-white font-medium rounded-lg hover:bg-accent/80 transition-colors"
             >
               Tentar novamente
@@ -130,7 +125,6 @@ export default function Home() {
         )}
       </div>
 
-      {/* ESPAÇO PARA ANÚNCIO NO FINAL */}
       <div className="mt-10">
         <EspacoAnuncio formato="banner" />
       </div>

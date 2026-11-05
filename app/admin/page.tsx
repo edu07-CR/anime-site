@@ -1,7 +1,8 @@
 import { createClient as createSupabaseClient } from '@supabase/supabase-js';
 import { createClient as createServerClient } from '@/lib/supabase/server';
 import { redirect } from 'next/navigation';
-import { Users, MessageSquare, Star, Eye, Tv } from 'lucide-react';
+import Link from 'next/link';
+import { ShieldAlert, ArrowLeft, Users, MessageSquare, Star, Eye, Tv } from 'lucide-react';
 import { ToggleChat } from '@/components/admin/ToggleChat';
 import { ToggleFeed } from '@/components/admin/ToggleFeed';
 import { GerenciarStreaming } from '@/components/admin/GerenciarStreaming';
@@ -56,7 +57,7 @@ export default async function AdminPage() {
 
   return (
     <div>
-      {/* BLOCO DE CONTROLE */}
+      {/* BLOCO DE CONTROLE (APENAS CHAT E FEED) */}
       <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mb-8">
         <div className="bg-surface border border-border p-6 rounded-xl flex items-center justify-between">
           <div>
