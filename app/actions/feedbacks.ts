@@ -14,10 +14,17 @@ export async function deletarFeedback(id: string) {
   const { data: profile } = await supabase.from('profiles').select('is_admin').eq('id', user.id).single();
   if (!profile?.is_admin) throw new Error('Acesso negado');
 
-  const { error } = await supabase.from('feedbacks').delete().eq('id', id);
+  // O count: 'exact' garante que sabemos se o banco realmente apagou a linha
+  const { error, count } = await supabase
+    .from('feedbacks')
+    .delete({ count: 'exact' })
+    .eq('id', id);
+    
   if (error) throw new Error(error.message);
+  if (count === 0) throw new Error('Nenhum feedback foi apagado. Verifique as permissões no banco.');
 
-  revalidatePath('/admin');
+  // A MÁGICA ACONTECE AQUI: Atualiza a rota correta!
+  revalidatePath('/admin/feedbacks');
 }
 
 // Marcar como resolvido (alternar status)
@@ -33,5 +40,6 @@ export async function toggleResolvido(id: string, isRead: boolean) {
   const { error } = await supabase.from('feedbacks').update({ is_read: !isRead }).eq('id', id);
   if (error) throw new Error(error.message);
 
-  revalidatePath('/admin');
+  // Atualiza a rota correta
+  revalidatePath('/admin/feedbacks');
 }

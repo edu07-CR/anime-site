@@ -1,29 +1,11 @@
 import { createClient as createSupabaseClient } from '@supabase/supabase-js';
 import { createClient as createServerClient } from '@/lib/supabase/server';
 import { redirect } from 'next/navigation';
-import Link from 'next/link';
-import { ShieldAlert, Users, MessageSquare, ArrowLeft, Star, MessageSquareWarning, Tv, Eye, Flag, Trash2, ExternalLink } from 'lucide-react';
-import { BotaoNotificar } from '@/components/admin/BotaoNotificar';
+import { Users, MessageSquare, Star, Eye, Tv } from 'lucide-react';
 import { ToggleChat } from '@/components/admin/ToggleChat';
 import { ToggleFeed } from '@/components/admin/ToggleFeed';
-import { CardFeedback } from '@/components/admin/CardFeedback';
 import { GerenciarStreaming } from '@/components/admin/GerenciarStreaming';
 import { GraficoAnalytics } from '@/components/admin/GraficoAnalytics';
-
-interface AnalyticsData {
-  date: string;
-  visitors: number;
-}
-
-interface Denuncia {
-  id: string;
-  post_id: string;
-  reporter_username: string;
-  reason: string;
-  created_at: string;
-  post_caption: string | null;
-  post_user_username: string;
-}
 
 export const dynamic = 'force-dynamic';
 
@@ -46,25 +28,13 @@ export default async function AdminPage() {
   const chatAtivo = config?.chat_enabled ?? true;
   const feedAtivo = config?.feed_enabled ?? true;
 
-  const { data: users } = await supabaseAdmin.from('profiles').select('id, username, avatar_url, created_at').order('created_at', { ascending: false });
-  const { data: allStatus } = await supabaseAdmin.from('user_anime').select('user_id, status, rating');
+  const { data: users } = await supabaseAdmin.from('profiles').select('id');
+  const { data: allStatus } = await supabaseAdmin.from('user_anime').select('status, rating');
 
-  const { data: feedbacks } = await supabaseAdmin
-    .from('feedbacks')
-    .select('*, profiles(username)')
-    .order('created_at', { ascending: false })
-    .limit(20);
-
-  // --- BUSCA AS DENÚNCIAS DE POSTS ---
-  const { data: denuncias } = await supabaseAdmin.rpc('get_denuncias_posts');
-  // -----------------------------------
-
-  let analyticsData: AnalyticsData[] = [];
+  let analyticsData: any[] = [];
   try {
     const vercelRes = await fetch('https://api.vercel.com/v1/query/web-analytics/visits/aggregate?projectId=' + process.env.VERCEL_PROJECT_ID, {
-      headers: {
-        Authorization: `Bearer ${process.env.VERCEL_ACCESS_TOKEN}`,
-      },
+      headers: { Authorization: `Bearer ${process.env.VERCEL_ACCESS_TOKEN}` },
       next: { revalidate: 3600 } 
     });
 
@@ -81,31 +51,11 @@ export default async function AdminPage() {
     console.error("Erro ao buscar dados da Vercel:", error);
   }
 
-  const usersData = (users || []).map(u => {
-    const userStatus = (allStatus || []).filter(s => s.user_id === u.id);
-    const notas = userStatus.filter(s => s.rating && s.rating > 0);
-    return {
-      ...u,
-      assistindo: userStatus.filter(s => s.status === 'assistindo').length,
-      concluido: userStatus.filter(s => s.status === 'concluido').length,
-      quero: userStatus.filter(s => s.status === 'quero').length,
-      totalNotas: notas.length,
-      media: notas.length > 0 ? notas.reduce((acc, curr) => acc + (curr.rating || 0), 0) / notas.length : 0
-    };
-  });
+  const totalNotas = allStatus?.filter(s => s.rating && s.rating > 0) || [];
+  const mediaGeral = totalNotas.length > 0 ? (totalNotas.reduce((acc, curr) => acc + (curr.rating || 0), 0) / totalNotas.length).toFixed(1) : '0.0';
 
   return (
-    <div className="w-full max-w-5xl mx-auto py-8">
-      <div className="flex items-center justify-between mb-8">
-        <div className="flex items-center gap-3">
-          <ShieldAlert className="text-accent" size={32} />
-          <h1 className="text-3xl font-bold text-text">Painel de Administração</h1>
-        </div>
-        <Link href="/" className="text-sm font-semibold text-accent hover:underline flex items-center gap-1">
-          <ArrowLeft size={16} /> Voltar para a Home
-        </Link>
-      </div>
-
+    <div>
       {/* BLOCO DE CONTROLE */}
       <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mb-8">
         <div className="bg-surface border border-border p-6 rounded-xl flex items-center justify-between">
@@ -150,7 +100,7 @@ export default async function AdminPage() {
         </div>
         <div className="bg-surface border border-border p-6 rounded-xl flex items-center gap-4">
           <div className="p-3 bg-yellow-500/10 rounded-lg text-yellow-500"><Star size={24} /></div>
-          <div><p className="text-sm text-muted">Média de Notas</p><p className="text-2xl font-bold text-text">{(usersData.reduce((acc, u) => acc + u.media, 0) / (usersData.filter(u => u.totalNotas > 0).length || 1)).toFixed(1)}</p></div>
+          <div><p className="text-sm text-muted">Média de Notas</p><p className="text-2xl font-bold text-text">{mediaGeral}</p></div>
         </div>
         <div className="bg-surface border border-border p-6 rounded-xl flex items-center gap-4">
           <div className="p-3 bg-blue-500/10 rounded-lg text-blue-500"><MessageSquare size={24} /></div>
@@ -176,117 +126,6 @@ export default async function AdminPage() {
           </div>
         </div>
         <GraficoAnalytics data={analyticsData} />
-      </div>
-
-      {/* NOVO BLOCO DE DENÚNCIAS */}
-      <div className="flex items-center gap-2 mb-4">
-        <Flag className="text-red-500" size={24} />
-        <h2 className="text-xl font-bold text-text">Denúncias de Posts</h2>
-      </div>
-      
-      <div className="bg-surface border border-border rounded-xl overflow-hidden mb-10">
-        {denuncias?.length === 0 ? (
-          <p className="p-6 text-muted text-sm">Nenhuma denúncia pendente.</p>
-        ) : (
-          <div className="divide-y divide-border">
-            {denuncias?.map((d: Denuncia) => (
-              <div key={d.id} className="p-4 flex flex-col md:flex-row items-start md:items-center justify-between gap-4">
-                <div>
-                  <p className="text-sm text-text">
-                    <strong className="text-red-500">@{d.reporter_username}</strong> denunciou o post de <strong className="text-text">@{d.post_user_username}</strong>
-                  </p>
-                  <p className="text-xs text-muted mt-1">
-                    Motivo: <span className="text-text">{d.reason}</span>
-                  </p>
-                  <p className="text-xs text-muted mt-1">
-                    Conteúdo: <span className="italic">"{d.post_caption || '(Sem texto)'}"</span>
-                  </p>
-                </div>
-                <div className="flex items-center gap-2 shrink-0">
-                  <Link 
-                    href={`/feed/${d.post_id}`}
-                    target="_blank"
-                    className="flex items-center gap-1 text-sm text-blue-500 hover:underline px-2 py-1"
-                  >
-                    <ExternalLink size={14} /> Ver Post
-                  </Link>
-                  <form action={async () => {
-                    'use server';
-                    const supabaseAction = await createServerClient();
-                    await supabaseAction.from('post_reports').delete().eq('id', d.id);
-                    redirect('/admin');
-                  }}>
-                    <button type="submit" className="flex items-center gap-1 text-sm text-muted hover:text-text border border-border px-3 py-1 rounded-lg hover:bg-bg">
-                      Ignorar
-                    </button>
-                  </form>
-                  <form action={async () => {
-                    'use server';
-                    const supabaseAction = await createServerClient();
-                    await supabaseAction.from('posts').delete().eq('id', d.post_id);
-                    await supabaseAction.from('post_reports').delete().eq('post_id', d.post_id);
-                    redirect('/admin');
-                  }}>
-                    <button type="submit" className="flex items-center gap-1 text-sm text-white bg-red-500 hover:bg-red-600 px-3 py-1 rounded-lg">
-                      <Trash2 size={14} /> Deletar
-                    </button>
-                  </form>
-                </div>
-              </div>
-            ))}
-          </div>
-        )}
-      </div>
-
-      {/* TABELA DE USUÁRIOS */}
-      <h2 className="text-xl font-bold text-text mb-4">Todos os Usuários</h2>
-      <div className="bg-surface border border-border rounded-xl overflow-hidden overflow-x-auto mb-10">
-        <table className="w-full text-left text-sm whitespace-nowrap">
-          <thead className="bg-bg border-b border-border text-muted">
-            <tr>
-              <th className="p-4 font-medium">Usuário</th>
-              <th className="p-4 font-medium">Assistindo</th>
-              <th className="p-4 font-medium">Concluído</th>
-              <th className="p-4 font-medium">Quero Ver</th>
-              <th className="p-4 font-medium">Média</th>
-              <th className="p-4 font-medium text-center">Ações</th>
-            </tr>
-          </thead>
-          <tbody className="divide-y divide-border">
-            {usersData.map((u) => (
-              <tr key={u.id} className="hover:bg-bg/50 transition-colors">
-                <td className="p-4 flex items-center gap-3">
-                  {u.avatar_url ? (
-                    <img src={u.avatar_url} alt={u.username} className="w-8 h-8 rounded-full object-cover" />
-                  ) : (
-                    <div className="w-8 h-8 rounded-full bg-border flex items-center justify-center text-xs font-bold">{u.username?.charAt(0).toUpperCase() || '?'}</div>
-                  )}
-                  <span className="font-bold text-text">{u.username || 'Sem nome'}</span>
-                </td>
-                <td className="p-4 text-blue-500 font-medium">{u.assistindo}</td>
-                <td className="p-4 text-green-500 font-medium">{u.concluido}</td>
-                <td className="p-4 text-yellow-500 font-medium">{u.quero}</td>
-                <td className="p-4 text-text font-medium">{u.totalNotas > 0 ? u.media.toFixed(1) : 'N/A'}</td>
-                <td className="p-4 text-center"><BotaoNotificar userId={u.id} username={u.username || 'Usuário'} /></td>
-              </tr>
-            ))}
-          </tbody>
-        </table>
-      </div>
-
-      {/* SEÇÃO DE FEEDBACKS */}
-      <div className="flex items-center gap-2 mb-4">
-        <MessageSquareWarning className="text-accent" size={24} />
-        <h2 className="text-xl font-bold text-text">Feedbacks e Sugestões</h2>
-      </div>
-      <div className="bg-surface border border-border rounded-xl overflow-hidden">
-        {feedbacks?.length === 0 ? (
-          <p className="p-6 text-muted text-sm">Nenhum feedback recebido ainda.</p>
-        ) : (
-          feedbacks?.map((fb) => (
-            <CardFeedback key={fb.id} feedback={fb} />
-          ))
-        )}
       </div>
     </div>
   );
