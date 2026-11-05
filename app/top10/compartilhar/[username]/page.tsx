@@ -13,7 +13,6 @@ const supabase = createClient(
 
 export const dynamic = 'force-dynamic';
 
-// Metadados para o link ficar bonito no WhatsApp/Twitter
 export async function generateMetadata({ params }: { params: Promise<{ username: string }> }): Promise<Metadata> {
   const resolvedParams = await params;
   const username = decodeURIComponent(resolvedParams.username);
@@ -22,6 +21,33 @@ export async function generateMetadata({ params }: { params: Promise<{ username:
     title: `Top 10 de @${username} | AniVerse`,
     description: `Veja o ranking definitivo de animes de @${username} no AniVerse!`,
   };
+}
+
+// Função para buscar os dados no AniList (sem precisar da sua API interna)
+async function buscarAnimesAniList(ids: number[]) {
+  const query = `
+    query ($ids: [Int]) {
+      Page(page: 1, perPage: 50) {
+        media(id_in: $ids, type: ANIME) {
+          id
+          title { romaji }
+          coverImage { extraLarge }
+          averageScore
+        }
+      }
+    }
+  `;
+
+  const res = await fetch('https://graphql.anilist.co', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json', 'Accept': 'application/json' },
+    body: JSON.stringify({ query, variables: { ids } }),
+    next: { revalidate: 3600 } // Guarda em cache por 1 hora para carregar rápido
+  });
+
+  if (!res.ok) return [];
+  const json = await res.json();
+  return json.data?.Page?.media || [];
 }
 
 export default async function Top10PublicoPage({ params }: { params: Promise<{ username: string }> }) {
@@ -53,19 +79,23 @@ export default async function Top10PublicoPage({ params }: { params: Promise<{ u
     );
   }
 
-  // 3. Busca as informações de cada anime
-  const animesDetalhes = await Promise.all(
-    top10.map(async (item) => {
-      // Usamos a sua API interna ou direto o AniList (aqui simulando com sua API interna para manter o padrão)
-      // Se a sua API interna exigir autenticação, troque para a chamada direta do AniList.
-      const res = await fetch(`${process.env.NEXT_PUBLIC_SITE_URL || 'http://localhost:3000'}/api/anime/${item.anime_id}`, { cache: 'force-cache' });
-      if (!res.ok) return null;
-      const data = await res.json();
-      return { ...data, position: item.position };
-    })
-  );
+  // 3. Busca as informações dos animes direto no AniList
+  const idsAnimes = top10.map(item => item.anime_id);
+  const dadosAniList = await buscarAnimesAniList(idsAnimes);
 
-  const animesFiltrados = animesDetalhes.filter(Boolean);
+  // 4. Junta os dados do seu banco (posição) com os dados do AniList
+  const animesFiltrados = top10.map(item => {
+    const animeInfo = dadosAniList.find((a: any) => a.id === item.anime_id);
+    if (!animeInfo) return null;
+    
+    return {
+      id: animeInfo.id,
+      title: animeInfo.title.romaji,
+      coverUrl: animeInfo.coverImage.extraLarge,
+      score: animeInfo.averageScore ? (animeInfo.averageScore / 10).toFixed(1) : 'N/A',
+      position: item.position
+    };
+  }).filter(Boolean);
 
   return (
     <div className="min-h-screen bg-bg py-12 px-4">
@@ -92,17 +122,14 @@ export default async function Top10PublicoPage({ params }: { params: Promise<{ u
             <div key={anime.id} className="relative group rounded-xl overflow-hidden aspect-[2/3] bg-surface border border-border">
               <Image src={anime.coverUrl} alt={anime.title} fill className="object-cover" />
               
-              {/* Posição */}
               <div className="absolute top-2 left-2 w-8 h-8 bg-accent text-white font-black rounded-lg flex items-center justify-center shadow-lg">
                 #{anime.position}
               </div>
               
-              {/* Nota */}
               <div className="absolute top-2 right-2 bg-black/70 backdrop-blur-sm text-yellow-400 text-xs font-bold px-2 py-1 rounded-md flex items-center gap-1">
                 <Star size={10} fill="currentColor" /> {anime.score}
               </div>
 
-              {/* Título */}
               <div className="absolute bottom-0 w-full p-2 bg-gradient-to-t from-black/90 to-transparent">
                 <p className="text-white text-xs font-bold line-clamp-2 text-center">{anime.title}</p>
               </div>
@@ -110,7 +137,7 @@ export default async function Top10PublicoPage({ params }: { params: Promise<{ u
           ))}
         </div>
 
-        {/* Call to Action (CTA) */}
+        {/* Call to Action */}
         <div className="bg-surface border border-border rounded-2xl p-8 text-center shadow-lg">
           <h2 className="text-2xl font-bold text-text mb-2">Gostou do Top 10?</h2>
           <p className="text-muted mb-6">Crie o seu próprio ranking definitivo de animes no AniVerse. É grátis!</p>
