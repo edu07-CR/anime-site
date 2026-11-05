@@ -15,6 +15,9 @@ export interface AnimeData {
 }
 
 export function CardAnime({ anime }: { anime: AnimeData }) {
+  // Garante que a nota seja formatada com 1 casa decimal
+  const formattedScore = anime.score > 0 ? (anime.score > 10 ? (anime.score / 10).toFixed(1) : anime.score.toFixed(1)) : null;
+
   return (
     <Link 
       href={`/anime/${anime.id}`} 
@@ -29,19 +32,20 @@ export function CardAnime({ anime }: { anime: AnimeData }) {
           className="object-cover group-hover:scale-110 transition-transform duration-300" 
         />
         
-        {anime.score > 0 && (
-          <div className="absolute top-2 right-2 bg-black/70 text-yellow-400 text-xs font-bold px-2 py-1 rounded-md flex items-center gap-1">
-            <Star size={12} fill="currentColor" /> {anime.score}
+        {/* NOTA AMARELA COM FUNDO ESCURO */}
+        {formattedScore && (
+          <div className="absolute top-2 right-2 bg-black/60 backdrop-blur-md text-yellow-400 border border-white/10 text-xs font-bold px-2 py-1 rounded-md flex items-center gap-1.5 shadow-sm">
+            <Star size={12} fill="currentColor" /> 
+            {formattedScore}
           </div>
         )}
 
-        <div className="absolute bottom-2 left-2 bg-accent text-white text-xs font-bold px-2 py-1 rounded-md flex items-center gap-1">
+        <div className="absolute bottom-2 left-2 bg-accent text-white text-xs font-bold px-2 py-1 rounded-md flex items-center gap-1 shadow-sm">
           EP {anime.episodes}
         </div>
       </div>
       
       <div className="p-3 flex-1 flex flex-col">
-        {/* TÍTULO DO ANIME (H3) - Organiza a hierarquia */}
         <h3 className="text-sm font-bold text-text line-clamp-2 group-hover:text-accent transition-colors">
           {anime.title}
         </h3>
