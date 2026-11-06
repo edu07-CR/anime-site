@@ -16,6 +16,9 @@ interface AnimeProximo {
   genres: string[];
 }
 
+// Imagem base64 minúscula (1x1 pixel cinza) para servir de placeholder e evitar o CLS
+const BLUR_DATA_URL = 'data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mNkYAAAAAYAAjCB0C8AAAAASUVORK5CYII=';
+
 export default function ProximosLancamentosPage() {
   const [animes, setAnimes] = useState<AnimeProximo[]>([]);
   const [isLoading, setIsLoading] = useState(true);
@@ -65,7 +68,7 @@ export default function ProximosLancamentosPage() {
         </div>
       ) : (
         <div className="grid grid-cols-2 md:grid-cols-4 lg:grid-cols-5 gap-4 md:gap-6">
-          {animes.map((anime) => (
+          {animes.map((anime, index) => (
             <Link 
               key={anime.id} 
               href={`/anime/${anime.id}`}
@@ -78,6 +81,9 @@ export default function ProximosLancamentosPage() {
                   fill 
                   sizes="(max-width: 768px) 50vw, (max-width: 1200px) 33vw, 20vw"
                   className="object-cover group-hover:scale-110 transition-transform duration-300" 
+                  placeholder="blur"
+                  blurDataURL={BLUR_DATA_URL}
+                  priority={index < 5} // Otimiza as 5 primeiras imagens para carregar rápido
                 />
                 
                 {/* Data de Lançamento */}
