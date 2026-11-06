@@ -14,7 +14,7 @@ export async function POST(req: Request) {
               media(search: $search, type: ANIME) {
                 id
                 title { romaji english }
-                coverImage { large }
+                coverImage { extraLarge }
                 averageScore
               }
             }
@@ -32,7 +32,7 @@ export async function POST(req: Request) {
     const results = json.data.Page.media.map((media: any) => ({
       id: media.id,
       title: media.title.english || media.title.romaji,
-      coverUrl: media.coverImage.large,
+      coverUrl: media.coverImage.extraLarge, // <-- AQUI ESTAVA O ERRO
       score: media.averageScore ? (media.averageScore / 10).toFixed(1) : 'N/A'
     }));
 

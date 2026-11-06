@@ -12,12 +12,12 @@ export async function GET(
       return NextResponse.json({ error: 'ID inválido' }, { status: 400 });
     }
 
-    // Voltando para o AniList (mais estável)
+    // QUERY ATUALIZADA: agora pede extraLarge em vez de large
     const res = await fetch('https://graphql.anilist.co', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({
-        query: `query ($id: Int) { Media(id: $id, type: ANIME) { id title { romaji english } coverImage { large } averageScore } }`,
+        query: `query ($id: Int) { Media(id: $id, type: ANIME) { id title { romaji english } coverImage { extraLarge large } averageScore } }`,
         variables: { id: animeId }
       }),
       next: { revalidate: 86400 }
@@ -37,7 +37,8 @@ export async function GET(
     return NextResponse.json({
       id: media.id,
       title: media.title.english || media.title.romaji,
-      coverUrl: media.coverImage.large,
+      // MAPEAMENTO ATUALIZADO: usa extraLarge (com fallback para large)
+      coverUrl: media.coverImage.extraLarge || media.coverImage.large,
       score: media.averageScore ? (media.averageScore / 10).toFixed(1) : 'N/A'
     });
 
