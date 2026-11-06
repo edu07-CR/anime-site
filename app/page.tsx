@@ -79,7 +79,9 @@ export default function Home() {
   }, [diaSelecionado, reloadTrigger]);
 
   return (
-    <div className="w-full">
+    // ALTERAÇÃO AQUI: Adicionado max-w-7xl mx-auto px-4 py-8
+    <div className="w-full max-w-7xl mx-auto px-4 py-8">
+      
       <header className="mb-8 flex flex-col md:flex-row md:items-end justify-between gap-2">
         <div>
           <h1 className="text-2xl md:text-3xl font-bold text-text flex items-center gap-3">
