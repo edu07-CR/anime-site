@@ -1,8 +1,6 @@
-// next.config.ts
 import type { NextConfig } from "next";
 
 const nextConfig: NextConfig = {
-  // Aumenta o limite de payload para as Server Actions (upload de imagens)
   experimental: {
     serverActions: {
       bodySizeLimit: '5mb',
@@ -10,12 +8,14 @@ const nextConfig: NextConfig = {
   },
 
   images: {
+    formats: ['image/avif', 'image/webp'], // <-- ADICIONADO: Conversão para formatos modernos
+    minimumCacheTTL: 14400, // <-- ADICIONADO: Cache de 4 horas para as imagens
     remotePatterns: [
       {
         protocol: 'https',
         hostname: 's4.anilist.co',
         port: '',
-        pathname: '/**', // Permite qualquer caminho neste domínio
+        pathname: '/**',
       },
       {
         protocol: 'https',
@@ -25,8 +25,6 @@ const nextConfig: NextConfig = {
       },
     ],
   },
-
-  // ... o restante do arquivo (headers, etc.)
 };
 
 export default nextConfig;

@@ -1,39 +1,28 @@
+'use client';
+
 import { CardAnime, AnimeData } from './CardAnime';
+import { Loader2 } from 'lucide-react';
 
-interface GridAnimesProps {
-  animes: AnimeData[];
-  isLoading: boolean;
-}
-
-export function GridAnimes({ animes, isLoading }: GridAnimesProps) {
+export function GridAnimes({ animes, isLoading }: { animes: AnimeData[], isLoading: boolean }) {
   if (isLoading) {
     return (
-      <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 gap-4">
-        {Array.from({ length: 10 }).map((_, i) => (
-          <div key={i} className="flex flex-col bg-surface rounded-xl overflow-hidden border border-border animate-pulse">
-            <div className="aspect-[2/3] w-full bg-border/30" />
-            <div className="p-3">
-              <div className="h-4 bg-border/30 rounded w-full mb-2" />
-              <div className="h-4 bg-border/30 rounded w-2/3" />
-            </div>
-          </div>
-        ))}
+      <div className="flex justify-center items-center py-20">
+        <Loader2 className="animate-spin text-accent" size={48} />
       </div>
     );
   }
 
   if (animes.length === 0) {
     return (
-      <div className="flex flex-col items-center justify-center py-20 text-center">
-        <span className="text-4xl mb-4">🍃</span>
-        <h3 className="text-lg font-bold text-text">Nenhum lançamento</h3>
-        <p className="text-muted text-sm mt-1">Não encontramos animes para este dia.</p>
+      <div className="text-center py-20 border-2 border-dashed border-border rounded-2xl">
+        <p className="text-muted">Nenhum anime encontrado para este dia.</p>
       </div>
     );
   }
 
   return (
-    <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 gap-4">
+    // MESMO GRID E MESMO GAP DA PÁGINA DE PRÓXIMOS
+    <div className="grid grid-cols-2 md:grid-cols-4 lg:grid-cols-5 gap-4 md:gap-6">
       {animes.map((anime) => (
         <CardAnime key={anime.id} anime={anime} />
       ))}

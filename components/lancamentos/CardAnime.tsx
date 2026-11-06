@@ -15,7 +15,7 @@ export interface AnimeData {
 }
 
 export function CardAnime({ anime }: { anime: AnimeData }) {
-  // Garante que a nota seja formatada com 1 casa decimal
+  // Garante que a nota seja formatada com 1 casa decimal (ex: 7.6)
   const formattedScore = anime.score > 0 ? (anime.score > 10 ? (anime.score / 10).toFixed(1) : anime.score.toFixed(1)) : null;
 
   return (
@@ -28,19 +28,18 @@ export function CardAnime({ anime }: { anime: AnimeData }) {
           src={anime.coverUrl} 
           alt={anime.title} 
           fill 
-          sizes="(max-width: 768px) 50vw, 20vw" 
+          sizes="(max-width: 768px) 50vw, (max-width: 1200px) 33vw, 20vw" 
           className="object-cover group-hover:scale-110 transition-transform duration-300" 
         />
         
-        {/* NOTA AMARELA COM FUNDO ESCURO */}
+        {/* NOTA FORMATADA AQUI */}
         {formattedScore && (
-          <div className="absolute top-2 right-2 bg-black/60 backdrop-blur-md text-yellow-400 border border-white/10 text-xs font-bold px-2 py-1 rounded-md flex items-center gap-1.5 shadow-sm">
-            <Star size={12} fill="currentColor" /> 
-            {formattedScore}
+          <div className="absolute top-2 right-2 bg-black/70 backdrop-blur-sm text-yellow-400 border border-white/10 text-xs font-bold px-2 py-1 rounded-md flex items-center gap-1">
+            <Star size={10} fill="currentColor" /> {formattedScore}
           </div>
         )}
 
-        <div className="absolute bottom-2 left-2 bg-accent text-white text-xs font-bold px-2 py-1 rounded-md flex items-center gap-1 shadow-sm">
+        <div className="absolute bottom-2 left-2 bg-black/60 text-white text-[10px] font-bold px-2 py-0.5 rounded uppercase">
           EP {anime.episodes}
         </div>
       </div>
@@ -50,7 +49,7 @@ export function CardAnime({ anime }: { anime: AnimeData }) {
           {anime.title}
         </h3>
         
-        <div className="flex items-center gap-1 text-text/70 text-xs mt-2">
+        <div className="flex items-center gap-1 text-text/70 text-xs mt-1 truncate">
           <Clock size={12} />
           {anime.formattedTime}
         </div>

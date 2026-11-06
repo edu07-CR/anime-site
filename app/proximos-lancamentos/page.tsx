@@ -76,7 +76,7 @@ export default function ProximosLancamentosPage() {
                   src={anime.coverUrl} 
                   alt={anime.title} 
                   fill 
-                  sizes="(max-width: 768px) 50vw, 20vw" 
+                  sizes="(max-width: 768px) 50vw, (max-width: 1200px) 33vw, 20vw"
                   className="object-cover group-hover:scale-110 transition-transform duration-300" 
                 />
                 
