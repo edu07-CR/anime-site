@@ -50,8 +50,9 @@ export function BotaoTrailer({ trailerId, tituloAnime }: { trailerId?: string, t
             {/* Cabeçalho do Modal */}
             <div className="flex items-center justify-between px-2">
               <div className="flex items-center gap-3">
-                <div className="flex items-center justify-center w-8 h-8 rounded-full border-2 border-accent bg-bg/50">
-                  <span className="text-accent font-black text-lg leading-none mt-[1px]">A</span>
+                {/* ÍCONE PURO, SEM CÍRCULO AQUI */}
+                <div className="w-10 h-10 flex items-center justify-center">
+                  <img src="/icon.svg" alt="Logo AniVerse" className="w-full h-full object-contain" />
                 </div>
                 <div>
                   <h3 className="text-white font-bold text-lg md:text-xl line-clamp-1">{tituloAnime || 'Trailer'}</h3>

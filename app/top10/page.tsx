@@ -159,7 +159,7 @@ export default function Top10Page() {
   };
 
   const handleCompartilhar = async () => {
-    // Link atualizado para a nova estrutura de pastas
+    // A ÚNICA MUDANÇA: O link aponta para a nossa página pública!
     const url = `${window.location.origin}/compartilhar/${username}`;
     const shareData = {
       title: `Top 10 de ${username} no AniVerse`,

@@ -1,7 +1,7 @@
 import Image from 'next/image';
 import Link from 'next/link';
-import { ArrowLeft, Star } from 'lucide-react';
-import { BotaoEsperaAniList } from '@/components/anime/BotaoEsperaAniList'; // <-- NOVO IMPORT
+import { ArrowLeft, Star, CalendarClock } from 'lucide-react';
+import { BotaoEsperaAniList } from '@/components/anime/BotaoEsperaAniList';
 import { BotaoTrailer } from '@/components/anime/BotaoTrailer';
 import { SecaoComentarios } from '@/components/anime/SecaoComentarios'; 
 import { EspacoAnuncio } from '@/components/layout/EspacoAnuncio';
@@ -125,6 +125,9 @@ export default async function AnimePage({ params }: { params: Promise<{ id: stri
   const title = anime.title.english || anime.title.romaji;
   const studio = anime.studios?.nodes?.[0]?.name || 'Estúdio Desconhecido';
   const sinopse = anime.description || 'Sem sinopse disponível.';
+  
+  // Verifica se o anime é um lançamento futuro
+  const isProximo = anime.status === 'NOT_YET_RELEASED';
 
   return (
     <div className="relative w-full -mt-6">
@@ -141,16 +144,14 @@ export default async function AnimePage({ params }: { params: Promise<{ id: stri
 
       <div className="max-w-7xl mx-auto px-4 md:px-6 pt-20 md:pt-32 pb-12 flex flex-col lg:flex-row gap-8">
         
-        {/* COLUNA ESQUERDA (CONTEÚDO PRINCIPAL) */}
+        {/* COLUNA ESQUERDA */}
         <div className="flex-1 w-full">
           
-          {/* ANÚNCIO NO TOPO */}
           <div className="mb-8">
             <EspacoAnuncio formato="banner" />
           </div>
 
           <div className="flex flex-col md:flex-row gap-8 md:gap-12">
-            {/* PÔSTER + TRAILER + ANÚNCIO LATERAL ESQUERDO */}
             <div className="w-full md:w-1/3 flex-shrink-0 flex flex-col gap-6">
               <div className="relative aspect-[2/3] w-full max-w-[300px] mx-auto md:mx-0 rounded-xl overflow-hidden border-2 border-border shadow-2xl shadow-black/50">
                 <Image 
@@ -169,10 +170,7 @@ export default async function AnimePage({ params }: { params: Promise<{ id: stri
               </div>
             </div>
 
-            {/* INFORMAÇÕES + SINOPSE + COMENTÁRIOS */}
             <div className="w-full md:w-2/3 flex flex-col">
-              
-              {/* Informações Básicas */}
               <div className="flex items-center gap-3 mb-2 text-text/80 text-sm font-semibold">
                 <span>{anime.seasonYear || 'Ano Desconhecido'}</span>
                 <span>•</span>
@@ -203,19 +201,35 @@ export default async function AnimePage({ params }: { params: Promise<{ id: stri
                 ))}
               </div>
 
+              {/* CONTAINER DOS CARDS DE AÇÃO (CORRIGIDO) */}
               <div className="flex flex-col gap-6">
-                {/* AQUI FOI SUBSTITUÍDO O ACOESANIME PELO BOTAO DE ESPERA */}
-                 <div className="w">
-                 <BotaoEsperaAniList />
-                  </div>
-                <div className="-mt-3">
-                  <OndeAssistir tituloAnime={title} animeId={anime.id} />
+                {/* LÓGICA DA CAIXA ROXA AQUI (Agora com max-w-md para alinhar com a de baixo) */}
+                <div className="w-full max-w-md">
+                  {isProximo ? (
+                    <div className="w-full bg-accent/10 border border-accent/20 rounded-xl p-6 flex flex-col items-start">
+                      <div className="flex items-center gap-2 mb-2">
+                        <CalendarClock className="text-accent" size={24} />
+                        <h3 className="text-lg font-bold text-accent">Em Breve</h3>
+                      </div>
+                      <p className="text-sm text-text/80">
+                        Este anime ainda não foi lançado. Volte em breve para assistir e salvar suas notas!
+                      </p>
+                    </div>
+                  ) : (
+                    <BotaoEsperaAniList />
+                  )}
                 </div>
+                
+                {/* ESGONDE O ONDE ASSISTIR SE FOR FUTURO */}
+                {!isProximo && (
+                  <div className="w-full max-w-md">
+                    <OndeAssistir tituloAnime={title} animeId={anime.id} />
+                  </div>
+                )}
                 
                 <BannerGeek tituloAnime={title} />
               </div>
 
-              {/* SINOPSE */}
               <div className="mb-8 mt-6">
                 <h2 className="text-xl font-bold text-text mb-3">Sinopse</h2>
                 <p className="text-text/80 leading-relaxed text-sm md:text-base">
@@ -227,7 +241,6 @@ export default async function AnimePage({ params }: { params: Promise<{ id: stri
             </div>
           </div>
 
-          {/* ANÚNCIO NO FINAL */}
           <div className="mt-10">
             <EspacoAnuncio formato="banner" />
           </div>
@@ -239,7 +252,6 @@ export default async function AnimePage({ params }: { params: Promise<{ id: stri
           </div>
         </div>
 
-        {/* COLUNA DIREITA (ANÚNCIO LATERAL FINO) */}
         <div className="hidden lg:block w-40 flex-shrink-0">
           <div className="sticky top-24">
             <EspacoAnuncio formato="vertical" />

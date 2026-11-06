@@ -5,7 +5,7 @@ import Link from 'next/link';
 import Image from 'next/image';
 import { usePathname, useRouter } from 'next/navigation';
 import { createPortal } from 'react-dom';
-import { CalendarDays, Trophy, User, LogOut, Compass, MessageCircle, LayoutGrid, Menu, X, ShieldAlert, MessageSquareWarning } from 'lucide-react';
+import { CalendarDays, Trophy, User, LogOut, Compass, MessageCircle, LayoutGrid, Menu, X, ShieldAlert, MessageSquareWarning, CalendarClock } from 'lucide-react';
 import { createClient } from '@/lib/supabase/client';
 import { User as SupabaseUser } from '@supabase/supabase-js';
 import { ThemeToggle } from './ThemeToggle';
@@ -15,6 +15,7 @@ import { ModalFeedback } from './ModalFeedback';
 
 const navItems = [
   { name: 'Lançamentos', href: '/', icon: CalendarDays },
+  { name: 'Próximos', href: '/proximos-lancamentos', icon: CalendarClock }, // <-- NOVO ITEM AQUI
   { name: 'Mensagens', href: '/mensagens', icon: MessageCircle },
   { name: 'Feed', href: '/feed', icon: LayoutGrid },
   { name: 'Meu Top 10', href: '/top10', icon: Trophy },
@@ -66,7 +67,6 @@ export function Navbar() {
 
         fetchUnread();
 
-        // CORREÇÃO: Nome do canal único com ID do usuário e timestamp
         channel = supabase
           .channel(`navbar-mensagens-${user.id}-${Date.now()}`)
           .on(
@@ -104,7 +104,6 @@ export function Navbar() {
       {/* DESKTOP */}
       <header className="hidden md:flex sticky top-0 z-50 w-full h-16 bg-surface/80 backdrop-blur-md border-b border-border items-center justify-between px-6 transition-colors duration-300">
         <Link href="/" className="flex items-center group cursor-pointer">
-          {/* LOGO (que contém o "A") */}
           <div className="relative w-9 h-9 group-hover:scale-105 transition-transform flex-shrink-0">
             <Image 
               src="/icon.svg" 
@@ -114,7 +113,6 @@ export function Navbar() {
             />
           </div>
           
-          {/* TEXTO (NIVERSE) - O "A" já está na logo */}
           <span className="text-xl font-bold tracking-wider text-text ml-0">
             <span className="text-accent">NI</span><span>VERSE</span>
           </span>
