@@ -3,25 +3,24 @@ import { NextRequest } from 'next/server';
 
 export const runtime = 'nodejs'; 
 
-// 1. Definição das paletas de cores dos temas
 const THEMES = {
   padrao: {
     bg: '#0a0a0f',
-    primary: '#a855f7', // Roxo
+    primary: '#a855f7',
     text: '#ffffff',
     cardBg: '#14141c',
     gradient: 'linear-gradient(to top, rgba(0,0,0,0.9), transparent)',
   },
   cyberpunk: {
     bg: '#000000',
-    primary: '#00ffcc', // Ciano Neon
+    primary: '#00ffcc',
     text: '#ffffff',
     cardBg: '#111111',
     gradient: 'linear-gradient(to top, rgba(0,0,0,0.95), transparent)',
   },
   aesthetic: {
-    bg: '#f6f5f2', // Bege/Creme do briefing
-    primary: '#a855f7', // Roxo
+    bg: '#f6f5f2',
+    primary: '#a855f7',
     text: '#333333',
     cardBg: '#e5e5e5',
     gradient: 'linear-gradient(to top, rgba(246,245,242,0.95), transparent)',
@@ -34,17 +33,20 @@ export async function GET(req: NextRequest) {
     const username = searchParams.get('username') || 'usuario';
     const animesParam = searchParams.get('animes');
     const temaParam = searchParams.get('tema') || 'padrao';
+    const isOG = searchParams.get('formato') === 'og'; 
 
-    // Pega as cores do tema selecionado (ou usa o padrão se o tema for inválido)
     const theme = THEMES[temaParam as keyof typeof THEMES] || THEMES.padrao;
 
     if (!animesParam) return new Response('Faltando animes', { status: 400 });
-    const animes = JSON.parse(animesParam);
+    
+    let animes = JSON.parse(animesParam);
+    if (isOG) animes = animes.slice(0, 6);
 
     const animesComImagens = await Promise.all(
       animes.map(async (anime: any) => {
         try {
-          const response = await fetch(anime.coverUrl);
+          const url = isOG ? anime.coverUrl.replace('/extraLarge/', '/large/') : anime.coverUrl;
+          const response = await fetch(url);
           const arrayBuffer = await response.arrayBuffer();
           const base64 = Buffer.from(arrayBuffer).toString('base64');
           const mimeType = response.headers.get('content-type') || 'image/jpeg';
@@ -55,73 +57,69 @@ export async function GET(req: NextRequest) {
       })
     );
 
+    const width = isOG ? 1200 : 1080;
+    const height = isOG ? 630 : 1350;
+    const cardWidth = isOG ? 200 : 310;
+    const cardHeight = isOG ? 300 : 465;
+
     return new ImageResponse(
       (
         <div
           style={{
             width: '100%', height: '100%', display: 'flex', flexDirection: 'column',
-            alignItems: 'center', backgroundColor: theme.bg, // Cor do fundo dinâmica
-            padding: '48px', fontFamily: 'sans-serif',
-            transition: 'all 0.3s ease',
+            alignItems: 'center', justifyContent: 'center', backgroundColor: theme.bg,
+            padding: isOG ? '20px' : '48px', fontFamily: 'sans-serif',
           }}
         >
-          {/* Cabeçalho */}
-          <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', marginBottom: '40px' }}>
-            <h2 style={{ color: theme.primary, fontSize: '30px', margin: 0, textTransform: 'uppercase', letterSpacing: '2px' }}>
-              Meu Top 10 Animes
+          <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', marginBottom: isOG ? '20px' : '40px' }}>
+            <h2 style={{ color: theme.primary, fontSize: isOG ? '20px' : '30px', margin: 0, textTransform: 'uppercase' }}>
+              Top 10 Animes
             </h2>
-            <h1 style={{ color: theme.text, fontSize: '60px', margin: '10px 0 0 0', fontWeight: '900' }}>
+            <h1 style={{ color: theme.text, fontSize: isOG ? '40px' : '60px', margin: '5px 0 0 0', fontWeight: '900' }}>
               @{username}
             </h1>
           </div>
 
-          {/* Grid de Animes */}
-          <div style={{ display: 'flex', flexWrap: 'wrap', gap: '16px', justifyContent: 'center', width: '100%' }}>
+          <div style={{ display: 'flex', flexWrap: 'wrap', gap: isOG ? '10px' : '16px', justifyContent: 'center', width: '100%' }}>
             {animesComImagens.map((anime: any, index: number) => (
               <div key={index} style={{ 
-                display: 'flex', position: 'relative', width: '310px', height: '465px', 
-                borderRadius: '16px', overflow: 'hidden', backgroundColor: theme.cardBg,
-                border: `2px solid ${temaParam === 'cyberpunk' ? theme.primary : 'transparent'}`, // Borda neon no cyberpunk
-                boxShadow: temaParam === 'cyberpunk' ? `0 0 15px ${theme.primary}` : 'none' // Glow no cyberpunk
+                display: 'flex', position: 'relative', width: `${cardWidth}px`, height: `${cardHeight}px`, 
+                borderRadius: '12px', overflow: 'hidden', backgroundColor: theme.cardBg,
+                border: `2px solid ${temaParam === 'cyberpunk' ? theme.primary : 'transparent'}`,
               }}>
                 {/* eslint-disable-next-line @next/next/no-img-element */}
                 <img src={anime.coverBase64} alt={anime.title} style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
                 
-                {/* Número */}
                 <div style={{ 
-                  position: 'absolute', top: '8px', left: '8px', width: '40px', height: '40px', 
-                  backgroundColor: theme.primary, color: temaParam === 'aesthetic' ? '#fff' : '#fff', 
-                  display: 'flex', alignItems: 'center', justifyContent: 'center', 
-                  fontSize: '24px', fontWeight: 'bold', borderRadius: '8px' 
+                  position: 'absolute', top: '4px', left: '4px', width: isOG ? '24px' : '40px', height: isOG ? '24px' : '40px', 
+                  backgroundColor: theme.primary, color: 'white', display: 'flex', alignItems: 'center', 
+                  justifyContent: 'center', fontSize: isOG ? '14px' : '24px', fontWeight: 'bold', borderRadius: '6px' 
                 }}>
                   {index + 1}
-                </div>
-
-                {/* Título */}
-                <div style={{ 
-                  position: 'absolute', bottom: 0, width: '100%', padding: '12px',
-                  background: theme.gradient, // Gradiente dinâmico
-                }}>
-                  <h3 style={{ color: temaParam === 'aesthetic' ? '#1a1a1a' : '#ffffff', fontSize: '16px', margin: 0, fontWeight: 'bold' }}>
-                    {anime.title}
-                  </h3>
                 </div>
               </div>
             ))}
           </div>
 
-          {/* Logo */}
-          <div style={{ display: 'flex', alignItems: 'center', gap: '12px', marginTop: '40px' }}>
-            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', width: '40px', height: '40px', borderRadius: '50%', border: `4px solid ${theme.primary}` }}>
-              <span style={{ color: theme.primary, fontWeight: '900', fontSize: '20px', marginTop: '4px' }}>A</span>
+          {!isOG && (
+            <div style={{ display: 'flex', alignItems: 'center', gap: '12px', marginTop: '40px' }}>
+              <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', width: '40px', height: '40px', borderRadius: '50%', border: `4px solid ${theme.primary}` }}>
+                <span style={{ color: theme.primary, fontWeight: '900', fontSize: '20px', marginTop: '4px' }}>A</span>
+              </div>
+              <span style={{ color: theme.text, fontSize: '24px', fontWeight: 'bold', letterSpacing: '2px' }}>
+                <span style={{ color: theme.primary }}>ANI</span>VERSE
+              </span>
             </div>
-            <span style={{ color: theme.text, fontSize: '24px', fontWeight: 'bold', letterSpacing: '2px' }}>
-              <span style={{ color: theme.primary }}>ANI</span>VERSE
-            </span>
-          </div>
+          )}
         </div>
       ),
-      { width: 1080, height: 1350 }
+      { 
+        width: width, 
+        height: height,
+        headers: {
+          'Cache-Control': 'public, max-age=31536000, s-maxage=31536000, immutable',
+        }
+      }
     );
   } catch (e: any) {
     console.error("Erro na geração da imagem:", e);
