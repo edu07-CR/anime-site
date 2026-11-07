@@ -5,13 +5,25 @@ import { createClient } from '@/lib/supabase/client';
 import { Loader2, Send, Lock } from 'lucide-react';
 import { useRouter } from 'next/navigation';
 
+// A interface agora é idêntica à do GeradorCard
 interface AnimeData {
   id: number;
   title: string;
   coverUrl: string;
+  score: string;
 }
 
-export function BotaoPostarFeed({ animes, legenda, feedLiberado }: { animes: AnimeData[], legenda: string, feedLiberado: boolean }) {
+export function BotaoPostarFeed({ 
+  animes, 
+  legenda, 
+  feedLiberado, 
+  tema 
+}: { 
+  animes: AnimeData[], 
+  legenda: string, 
+  feedLiberado: boolean, 
+  tema: string 
+}) {
   const [loading, setLoading] = useState(false);
   const [erro, setErro] = useState('');
   const supabase = createClient();
@@ -28,38 +40,38 @@ export function BotaoPostarFeed({ animes, legenda, feedLiberado }: { animes: Ani
       const { data: { user } } = await supabase.auth.getUser();
       if (!user) { setErro("Você precisa estar logado."); return; }
 
-      const mediaUrls: string[] = [];
+      const animesParam = encodeURIComponent(JSON.stringify(animes));
+      const ogImageUrl = `/api/top10-image?username=${user.user_metadata?.username || 'usuario'}&animes=${animesParam}&tema=${tema}`;
+      
+      const res = await fetch(ogImageUrl);
+      if (!res.ok) throw new Error("Falha ao gerar a imagem do Top 10.");
+      
+      const blob = await res.blob();
+      const fileName = `top10-${user.id}-${Date.now()}.png`;
+      
+      const { error: uploadError } = await supabase.storage.from('feed_media').upload(fileName, blob);
+      if (uploadError) throw new Error(`Falha no upload: ${uploadError.message}`);
 
-      // Faz o upload das capas uma por uma
-      for (const anime of animes) {
-        const highResUrl = anime.coverUrl.replace('/large/', '/extraLarge/'); 
-        const res = await fetch(`/api/proxy-image?url=${encodeURIComponent(highResUrl)}`);
-        const blob = await res.blob();
-        const fileName = `capa-${anime.id}-${Date.now()}.png`;
-        
-        const { error: uploadError } = await supabase.storage.from('feed_media').upload(fileName, blob);
-        if (uploadError) throw new Error(`Falha no upload: ${uploadError.message}`);
+      const { data: { publicUrl } } = supabase.storage.from('feed_media').getPublicUrl(fileName);
 
-        const { data: { publicUrl } } = supabase.storage.from('feed_media').getPublicUrl(fileName);
-        mediaUrls.push(publicUrl);
-      }
-
-      // Insere no banco
       const { error: postError } = await supabase.from('posts').insert({
         user_id: user.id,
-        media_url: mediaUrls[0], 
-        media_urls: mediaUrls,   
+        media_url: publicUrl, 
+        media_urls: [publicUrl],
         media_type: 'image',
         caption: legenda || `Meu Top 10 de animes!`,
-        is_ranking: true, // <-- Marca como ranking
+        is_ranking: true, 
+        // Se você criar a coluna 'theme' no banco, descomente a linha abaixo:
+        // theme: tema, 
       });
 
       if (postError) throw new Error(`Falha ao salvar: ${postError.message}`);
 
       router.push('/feed');
       
-    } catch (error: any) {
-      setErro(error.message || 'Tente novamente.');
+    } catch (error) {
+      // Correção do erro "no-explicit-any" do ESLint
+      setErro(error instanceof Error ? error.message : 'Tente novamente.');
     } finally {
       setLoading(false);
     }
@@ -75,13 +87,13 @@ export function BotaoPostarFeed({ animes, legenda, feedLiberado }: { animes: Ani
       
       <button
         onClick={handlePostar}
-        disabled={loading}
+        disabled={loading || !feedLiberado} // Correção do ponto 6: botão desabilita de verdade se o feed estiver em manutenção
         className={`flex items-center justify-center gap-2 px-8 py-4 rounded-xl font-bold transition-all shadow-lg w-full ${
           feedLiberado ? 'bg-accent text-white hover:bg-accent/90 shadow-accent/20 cursor-pointer' : 'bg-surface text-muted border border-border cursor-not-allowed'
         }`}
       >
         {loading ? <Loader2 className="animate-spin" size={20} /> : !feedLiberado ? <Lock size={20} /> : <Send size={20} />}
-        {loading ? 'Postando...' : !feedLiberado ? 'Feed em Manutenção' : 'Postar no Feed'}
+        {loading ? 'Gerando Card...' : !feedLiberado ? 'Feed em Manutenção' : 'Postar no Feed'}
       </button>
     </div>
   );
