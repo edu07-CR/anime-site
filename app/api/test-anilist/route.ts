@@ -18,23 +18,12 @@ const ANILIST_QUERY = `
 `;
 
 // ==========================================
-// 2. CACHE DO JIKAN (Plano B Otimizado)
+// 2. FALLBACK DO JIKAN (Plano B Otimizado)
 // ==========================================
-let cacheJikan: { dia: number, dados: any[] } | null = null;
-let ultimaAtualizacao = 0;
-
 async function fetchJikanFallback(diaSelecionado: number) {
-  const agora = Date.now();
-  if (cacheJikan && cacheJikan.dia === diaSelecionado && (agora - ultimaAtualizacao < 3600000)) {
-    console.log("Retornando dados do Jikan do CACHE local");
-    return cacheJikan.dados;
-  }
-
-  console.log("Buscando no Jikan...");
-  
   const res = await fetch('https://api.jikan.moe/v4/seasons/now?limit=25&sfw=true', {
     headers: { 'User-Agent': 'AniVerse/1.0 (https://www.aniverse.com.br)' },
-    next: { revalidate: 21600 }
+    next: { revalidate: 21600 } // Next.js cuida do cache por 6 horas
   });
 
   if (!res.ok) throw new Error('Jikan falhou ao buscar a temporada');
@@ -47,56 +36,19 @@ async function fetchJikanFallback(diaSelecionado: number) {
     return anime.broadcast?.day && diasDaSemanaIngles.indexOf(anime.broadcast.day) === diaSelecionado;
   });
 
-  const animesFormatados = [];
-  const sleep = (ms: number) => new Promise(r => setTimeout(r, ms));
-
-  for (const anime of animesFiltrados) {
-    try {
-      await sleep(600); // Delay de segurança
-      
-      const detailRes = await fetch(`https://api.jikan.moe/v4/anime/${anime.mal_id}/episodes`, {
-        headers: { 'User-Agent': 'AniVerse/1.0' }
-      });
-      
-      let episodioAtual = 1;
-      if (detailRes.ok) {
-        const detailJson = await detailRes.json();
-        if (detailJson.data && detailJson.data.length > 0) {
-          episodioAtual = detailJson.data[detailJson.data.length - 1].mal_id;
-        }
-      }
-
-      animesFormatados.push({
-        id: anime.mal_id,
-        title: anime.title_english || anime.title,
-        coverUrl: anime.images.webp.large_image_url,
-        score: anime.score ? anime.score * 10 : 0, 
-        formattedTime: anime.broadcast.time ? anime.broadcast.time : '00:00',
-        episode: episodioAtual, 
-        source: 'jikan' 
-      });
-      
-    } catch (err) {
-      animesFormatados.push({
-        id: anime.mal_id,
-        title: anime.title_english || anime.title,
-        coverUrl: anime.images.webp.large_image_url,
-        score: anime.score ? anime.score * 10 : 0, 
-        formattedTime: anime.broadcast.time ? anime.broadcast.time : '00:00',
-        episode: anime.episodes || 1, 
-        source: 'jikan' 
-      });
-    }
-  }
-
-  cacheJikan = { dia: diaSelecionado, dados: animesFormatados };
-  ultimaAtualizacao = Date.now();
-
-  return animesFormatados;
+  return animesFiltrados.map((anime: any) => ({
+    id: anime.mal_id,
+    title: anime.title_english || anime.title,
+    coverUrl: anime.images.webp.large_image_url,
+    score: anime.score ? anime.score * 10 : 0, 
+    formattedTime: anime.broadcast.time ? anime.broadcast.time : '00:00',
+    episode: anime.episodes || 1, // Pega o total de eps direto do objeto
+    source: 'jikan' 
+  }));
 }
 
 // ==========================================
-// 3. A ROTA GET (O Cérebro)
+// 3. A ROTA GET
 // ==========================================
 export async function GET(req: Request) {
   const { searchParams } = new URL(req.url);

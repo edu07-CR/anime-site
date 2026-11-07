@@ -1,7 +1,31 @@
+// app/admin/layout.tsx
 import Link from 'next/link';
+import { redirect } from 'next/navigation';
 import { ShieldAlert, ArrowLeft, Flag, Users, MessageSquareWarning } from 'lucide-react';
+import { createClient } from '@/lib/supabase/server';
 
-export default function AdminLayout({ children }: { children: React.ReactNode }) {
+export default async function AdminLayout({ children }: { children: React.ReactNode }) {
+  const supabase = await createClient();
+
+  // 1. Pega o usuário logado
+  const { data: { user } } = await supabase.auth.getUser();
+
+  if (!user) {
+    redirect('/login?redirect=/admin');
+  }
+
+  // 2. Verifica se é admin no banco de dados
+  const { data: profile } = await supabase
+    .from('profiles')
+    .select('is_admin')
+    .eq('id', user.id)
+    .single();
+
+  // 3. Se não for admin, chuta pra fora
+  if (!profile?.is_admin) {
+    redirect('/'); // Ou poderia ser uma página de erro 403/not-found
+  }
+
   return (
     <div className="w-full max-w-5xl mx-auto py-8 px-4">
       

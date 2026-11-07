@@ -1,36 +1,39 @@
 'use client';
 
-import { useState, useOptimistic, startTransition } from 'react';
+import { useState, useTransition } from 'react';
 import { createClient } from '@/lib/supabase/client';
 import { UserPlus, UserCheck, Loader2 } from 'lucide-react';
+import { useRouter } from 'next/navigation';
 
 export function BotaoSeguir({ targetUserId, initialIsFollowing }: { targetUserId: string, initialIsFollowing: boolean }) {
+  const [isFollowing, setIsFollowing] = useState(initialIsFollowing);
   const [loading, setLoading] = useState(false);
   const supabase = createClient();
+  const router = useRouter();
 
-  const [isFollowing, toggleOptimistic] = useOptimistic(
-    initialIsFollowing,
-    (state) => !state
-  );
+  const handleToggleFollow = async () => {
+    setLoading(true);
+    // Atualização otimista para ficar rápido na tela
+    setIsFollowing(!isFollowing);
 
-  const handleToggleFollow = () => {
-    startTransition(async () => {
-      toggleOptimistic(null); // Muda visualmente na hora
-      setLoading(true);
-
-      const { data: { user } } = await supabase.auth.getUser();
-      if (!user) return;
-
-      if (initialIsFollowing) {
-        // Deixar de seguir
-        await supabase.from('follows').delete().match({ follower_id: user.id, following_id: targetUserId });
-      } else {
-        // Seguir
-        await supabase.from('follows').insert({ follower_id: user.id, following_id: targetUserId });
-      }
-      
+    const { data: { user } } = await supabase.auth.getUser();
+    if (!user) {
       setLoading(false);
-    });
+      setIsFollowing(isFollowing); // Volta atrás se não tiver usuário
+      return;
+    }
+
+    if (isFollowing) {
+      // Deixar de seguir
+      await supabase.from('follows').delete().match({ follower_id: user.id, following_id: targetUserId });
+    } else {
+      // Seguir
+      await supabase.from('follows').insert({ follower_id: user.id, following_id: targetUserId });
+    }
+    
+    setLoading(false);
+    // Atualiza os dados da página (contador de seguidores, etc) sem dar reload
+    router.refresh(); 
   };
 
   return (

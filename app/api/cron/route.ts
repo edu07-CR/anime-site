@@ -16,10 +16,17 @@ export async function GET(req: Request) {
 
   try {
     // 2. Calcula o início e o fim do dia (Fuso horário de São Paulo)
-    // Nota: O AniList usa timestamps em segundos baseados em UTC, mas para simplificar, vamos pegar o dia inteiro.
-    const hoje = new Date();
-    const inicioDoDia = new Date(hoje.setHours(0, 0, 0, 0)).getTime() / 1000;
-    const fimDoDia = new Date(hoje.setHours(23, 59, 59, 999)).getTime() / 1000;
+    const agora = new Date();
+    // Pega a data atual no fuso de SP
+    const spTime = new Date(agora.toLocaleString('en-US', { timeZone: 'America/Sao_Paulo' }));
+    const ano = spTime.getFullYear();
+    const mes = spTime.getMonth();
+    const dia = spTime.getDate();
+
+    // 00:00 em SP é 03:00 em UTC
+    const inicioSP = new Date(Date.UTC(ano, mes, dia, 3, 0, 0)); 
+    const inicioDoDia = inicioSP.getTime() / 1000;
+    const fimDoDia = inicioDoDia + 86399; // 23:59:59 do mesmo dia
 
     const query = `
       query ($inicio: Int, $fim: Int) {
@@ -46,9 +53,7 @@ export async function GET(req: Request) {
       body: JSON.stringify({ query, variables: { inicio: inicioDoDia, fim: fimDoDia } })
     });
 
-    if (!res.ok) {
-      throw new Error(`AniList API retornou status ${res.status}`);
-    }
+    if (!res.ok) throw new Error(`AniList API retornou status ${res.status}`);
 
     const json = await res.json();
     const episodios = json.data?.Page?.airingSchedules || [];
@@ -60,14 +65,25 @@ export async function GET(req: Request) {
 
     console.log(`[Cron] Encontrados ${episodios.length} episódios lançando hoje.`);
     let notificacoesEnviadas = 0;
+    const dataInicioISO = inicioSP.toISOString();
 
     // 4. Para cada anime, busca os usuários e envia notificação
     for (const ep of episodios) {
       const animeId = ep.mediaId;
       const titulo = ep.media.title.english || ep.media.title.romaji;
+      const tituloNotificacao = `Episódio de hoje: ${titulo}! 🍿`;
 
-      // *Aviso:* Se você rodar o cron mais de uma vez no mesmo dia, ele vai criar notificações duplicadas.
-      // Para um MVP, isso é aceitável. No futuro, podemos checar a tabela de notificações para evitar duplicatas.
+      // Anti-duplicação: checa se já enviamos essa notificação hoje
+      const { data: jaNotificado } = await supabaseAdmin
+        .from('notifications')
+        .select('id')
+        .eq('title', tituloNotificacao)
+        .gte('created_at', dataInicioISO)
+        .limit(1);
+
+      if (jaNotificado && jaNotificado.length > 0) {
+        continue; // Pula para o próximo anime
+      }
 
       const { data: usuarios } = await supabaseAdmin
         .from('user_anime')
@@ -78,8 +94,7 @@ export async function GET(req: Request) {
       if (usuarios && usuarios.length > 0) {
         const novasNotificacoes = usuarios.map((u) => ({
           user_id: u.user_id,
-          title: `Episódio de hoje: ${titulo}! 🍿`,
-          // MUDANÇA: Mensagem ajustada para "hoje", não "agora"
+          title: tituloNotificacao,
           message: `O episódio ${ep.episode} de ${titulo} está previsto para hoje. Vá assistir!`,
           is_read: false
         }));

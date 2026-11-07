@@ -12,15 +12,14 @@ export function BotaoBloquear({ targetUserId, initialIsBlocked }: { targetUserId
   const router = useRouter();
 
   const handleToggle = async () => {
-    if (isBlocked) {
-      if (!confirm('Deseja desbloquear este usuário?')) return;
-    } else {
-      if (!confirm('Deseja bloquear este usuário? Você não verá mais os posts e comentários dele.')) return;
-    }
-
+    // Removemos os confirms! O clique agora é direto.
     setLoading(true);
+    
     const { data: { user } } = await supabase.auth.getUser();
-    if (!user) return;
+    if (!user) {
+      setLoading(false);
+      return;
+    }
 
     if (isBlocked) {
       await supabase.from('blocks').delete().match({ blocker_id: user.id, blocked_id: targetUserId });

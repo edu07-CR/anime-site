@@ -2,7 +2,7 @@
 
 import { useState, useEffect, useRef } from 'react';
 import { createClient } from '@/lib/supabase/client';
-import { Loader2, Send, Lock, Trash2, Clock, Flag } from 'lucide-react';
+import { Loader2, Send, Lock, Trash2, Clock, Flag, AlertTriangle } from 'lucide-react';
 import Image from 'next/image';
 import Link from 'next/link';
 import { formatDistanceToNow } from 'date-fns';
@@ -30,6 +30,12 @@ export function ChatComunidade() {
   const [bloqueado, setBloqueado] = useState(false);
   const [denunciando, setDenunciando] = useState(false);
   
+  // NOVO: Guarda o perfil do usuário logado para usar na UI Otimista
+  const [meuPerfil, setMeuPerfil] = useState<{ username: string; avatar_url: string; is_admin: boolean } | null>(null);
+  
+  // Estado para controlar o modal de deleção
+  const [mensagemParaDeletar, setMensagemParaDeletar] = useState<string | null>(null);
+  
   const bottomRef = useRef<HTMLDivElement>(null);
   const supabase = createClient();
 
@@ -49,8 +55,17 @@ export function ChatComunidade() {
       const { data: { user } } = await supabase.auth.getUser();
       if (user) {
         setUserId(user.id);
-        const { data: profile } = await supabase.from('profiles').select('is_admin').eq('id', user.id).single();
-        if (profile?.is_admin) setIsAdmin(true);
+        // Busca o perfil completo (username, avatar, is_admin) para usar no Otimista
+        const { data: profile } = await supabase
+          .from('profiles')
+          .select('username, avatar_url, is_admin')
+          .eq('id', user.id)
+          .single();
+          
+        if (profile) {
+          setIsAdmin(profile.is_admin);
+          setMeuPerfil(profile);
+        }
       }
 
       const { data } = await supabase
@@ -77,7 +92,14 @@ export function ChatComunidade() {
             .select(`id, content, created_at, user_id, profiles (username, avatar_url, is_admin)`)
             .eq('id', payload.new.id)
             .single();
-          if (data) setMensagens((prev) => [...prev, data as unknown as Mensagem]);
+            
+          if (data) {
+            setMensagens((prev) => {
+              // Remove a mensagem temporária (se existir) para não duplicar
+              const semTemporarias = prev.filter((msg) => !msg.id.startsWith('temp-'));
+              return [...semTemporarias, data as unknown as Mensagem];
+            });
+          }
         }
       )
       .subscribe();
@@ -91,32 +113,72 @@ export function ChatComunidade() {
 
   const handleEnviar = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!novaMensagem.trim() || !userId || bloqueado) return;
+    if (!novaMensagem.trim() || !userId || bloqueado || !meuPerfil) return;
 
-    // 1. Verifica o Rate Limit via API (roda no servidor)
-    const rateRes = await fetch('/api/rate-limit', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ userId })
-    });
-    
-    const rateData = await rateRes.json();
+    const msgText = novaMensagem;
+    setNovaMensagem(''); // Limpa o input na hora
 
-    if (!rateData.success) {
-      const segundosRestantes = Math.ceil((rateData.reset - Date.now()) / 1000);
-      alert(`Você está enviando mensagens muito rápido. Aguarde ${segundosRestantes} segundos.`);
-      return;
+    // 1. CRIA UMA MENSAGEM FALSA (OTIMISTA) NA TELA
+    const tempId = `temp-${Date.now()}`;
+    const optimisticMsg: Mensagem = {
+      id: tempId,
+      content: msgText,
+      created_at: new Date().toISOString(),
+      user_id: userId,
+      profiles: meuPerfil,
+    };
+
+    setMensagens((prev) => [...prev, optimisticMsg]);
+
+    try {
+      // 2. VERIFICA O RATE LIMIT
+      const rateRes = await fetch('/api/rate-limit', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ userId })
+      });
+      
+      const rateData = await rateRes.json();
+
+      if (!rateData.success) {
+        const segundosRestantes = Math.ceil((rateData.reset - Date.now()) / 1000);
+        alert(`Muito rápido! Aguarde ${segundosRestantes} segundos.`);
+        
+        // Remove a mensagem otimista e devolve o texto
+        setMensagens((prev) => prev.filter((msg) => msg.id !== tempId)); 
+        setNovaMensagem(msgText); 
+        return;
+      }
+
+      // 3. SALVA NO SUPABASE
+      const { error } = await supabase.from('chat_messages').insert({ 
+        user_id: userId, 
+        content: msgText 
+      });
+
+      if (error) {
+        alert('Erro ao enviar a mensagem.');
+        setMensagens((prev) => prev.filter((msg) => msg.id !== tempId));
+        setNovaMensagem(msgText);
+      }
+      
+    } catch (err) {
+      console.error(err);
+      setMensagens((prev) => prev.filter((msg) => msg.id !== tempId));
+      setNovaMensagem(msgText);
     }
-
-    // 2. Prossegue com o envio
-    const msg = novaMensagem;
-    setNovaMensagem('');
-
-    await supabase.from('chat_messages').insert({ user_id: userId, content: msg });
   };
 
-  const handleDeletarMensagem = async (id: string) => {
-    if (!confirm('Tem certeza que deseja apagar esta mensagem?')) return;
+  const handleDeletarMensagem = (id: string) => {
+    setMensagemParaDeletar(id);
+  };
+
+  const confirmarDelecao = async () => {
+    if (!mensagemParaDeletar) return;
+    
+    const id = mensagemParaDeletar;
+    setMensagemParaDeletar(null);
+
     const { error } = await supabase.from('chat_messages').delete().eq('id', id);
     if (error) alert('Erro ao apagar a mensagem.');
     else setMensagens((prev) => prev.filter((msg) => msg.id !== id));
@@ -166,7 +228,7 @@ export function ChatComunidade() {
   }
 
   return (
-    <div className="flex flex-col h-[60vh] bg-bg/20 rounded-b-2xl">
+    <div className="flex flex-col h-[60vh] bg-bg/20 rounded-b-2xl relative">
       
       <div className="p-2 border-b border-border bg-surface/50 flex items-center justify-center gap-2 text-muted text-[10px]">
         <Clock size={12} />
@@ -177,6 +239,7 @@ export function ChatComunidade() {
         {mensagens.map((msg) => {
           const isMe = msg.user_id === userId;
           const podeDeletar = isMe || isAdmin;
+          const isTemporaria = msg.id.startsWith('temp-');
 
           return (
             <div key={msg.id} className={`flex gap-3 group ${isMe ? 'flex-row-reverse' : ''}`}>
@@ -194,7 +257,7 @@ export function ChatComunidade() {
                 </div>
                 
                 <div className="flex items-center gap-2">
-                  {podeDeletar && (
+                  {podeDeletar && !isTemporaria && (
                     <button 
                       onClick={() => handleDeletarMensagem(msg.id)}
                       className={`opacity-0 group-hover:opacity-100 transition-opacity text-muted hover:text-red-500 ${isMe ? 'order-first' : 'order-last'}`}
@@ -204,7 +267,7 @@ export function ChatComunidade() {
                     </button>
                   )}
 
-                  {!isMe && !isAdmin && (
+                  {!isMe && !isAdmin && !isTemporaria && (
                     <button 
                       onClick={() => handleDenunciar(msg)}
                       disabled={denunciando}
@@ -215,13 +278,13 @@ export function ChatComunidade() {
                     </button>
                   )}
                   
-                  <div className={`p-3 rounded-2xl text-sm ${isMe ? 'bg-accent text-white rounded-tr-sm' : 'bg-surface text-text rounded-tl-sm border border-border'}`}>
+                  <div className={`p-3 rounded-2xl text-sm ${isMe ? 'bg-accent text-white rounded-tr-sm' : 'bg-surface text-text rounded-tl-sm border border-border'} ${isTemporaria ? 'opacity-60' : ''}`}>
                     {msg.content}
                   </div>
                 </div>
 
                 <span className="text-[10px] text-muted mt-1 px-1">
-                  {formatDistanceToNow(new Date(msg.created_at), { addSuffix: true, locale: ptBR })}
+                  {isTemporaria ? 'Enviando...' : formatDistanceToNow(new Date(msg.created_at), { addSuffix: true, locale: ptBR })}
                 </span>
               </div>
             </div>
@@ -247,6 +310,39 @@ export function ChatComunidade() {
           <Send size={20} />
         </button>
       </form>
+
+      {/* MODAL DE CONFIRMAÇÃO DE DELEÇÃO */}
+      {mensagemParaDeletar && (
+        <div className="absolute inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm rounded-b-2xl">
+          <div className="bg-surface border border-border p-6 rounded-2xl max-w-sm w-full mx-4 shadow-2xl animate-in fade-in zoom-in-95 duration-200">
+            <div className="flex items-center gap-3 mb-4 text-red-500">
+              <div className="p-2 bg-red-500/10 rounded-full">
+                <AlertTriangle size={24} />
+              </div>
+              <h3 className="text-lg font-bold text-text">Apagar mensagem</h3>
+            </div>
+            
+            <p className="text-muted text-sm mb-6">
+              Tem certeza que deseja apagar esta mensagem? Essa ação não pode ser desfeita.
+            </p>
+            
+            <div className="flex gap-3 justify-end">
+              <button
+                onClick={() => setMensagemParaDeletar(null)}
+                className="px-4 py-2 rounded-lg text-sm font-bold text-muted hover:bg-border transition-colors cursor-pointer"
+              >
+                Cancelar
+              </button>
+              <button
+                onClick={confirmarDelecao}
+                className="px-4 py-2 rounded-lg text-sm font-bold bg-red-500 text-white hover:bg-red-600 transition-colors cursor-pointer"
+              >
+                Apagar
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }

@@ -2,7 +2,7 @@
 
 import { useState, useEffect, useRef } from 'react';
 import { createClient } from '@/lib/supabase/client';
-import { Loader2, Send, ArrowLeft, Trash2, ShieldBan } from 'lucide-react';
+import { Loader2, Send, ArrowLeft, Trash2, ShieldBan, AlertTriangle } from 'lucide-react';
 import Image from 'next/image';
 import Link from 'next/link';
 import { useRouter, useParams } from 'next/navigation';
@@ -37,6 +37,8 @@ export default function MensagensPage() {
   const [myUserId, setMyUserId] = useState<string | null>(null);
   const [isAdmin, setIsAdmin] = useState(false);
   const [targetProfile, setTargetProfile] = useState<Profile | null>(null);
+  
+  const [mensagemParaDeletar, setMensagemParaDeletar] = useState<string | null>(null);
   
   const bottomRef = useRef<HTMLDivElement>(null);
   const supabase = createClient();
@@ -111,7 +113,22 @@ export default function MensagensPage() {
             (newMsg.sender_id === myUserId && (newMsg as any).receiver_id === targetUserId) ||
             (newMsg.sender_id === targetUserId && (newMsg as any).receiver_id === myUserId)
           ) {
-            setMessages((prev) => [...prev, newMsg]);
+            setMessages((prev) => {
+              // Remove a mensagem temporária (se existir) para não duplicar
+              const semTemporarias = prev.filter(m => !m.id.startsWith('temp-'));
+              return [...semTemporarias, newMsg];
+            });
+          }
+        }
+      );
+
+      channel.on(
+        'postgres_changes',
+        { event: 'DELETE', schema: 'public', table: 'direct_messages' },
+        (payload: any) => {
+          const deletedId = payload.old.id;
+          if (deletedId) {
+            setMessages((prev) => prev.filter((msg) => msg.id !== deletedId));
           }
         }
       );
@@ -124,7 +141,7 @@ export default function MensagensPage() {
     return () => {
       if (channel) supabase.removeChannel(channel);
     };
-  }, [supabase, router, targetUserId]); // <-- CORRIGIDO: Removido myUserId e chatBloqueado
+  }, [supabase, router, targetUserId]);
 
   useEffect(() => {
     bottomRef.current?.scrollIntoView({ behavior: 'smooth' });
@@ -134,44 +151,81 @@ export default function MensagensPage() {
     e.preventDefault();
     if (!newMessage.trim() || !myUserId || chatBloqueado || isBlocked) return;
 
-    // 1. Verifica o Rate Limit via API
-    const rateRes = await fetch('/api/rate-limit', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ userId: myUserId })
-    });
-    
-    const rateData = await rateRes.json();
+    const msgText = newMessage;
+    setNewMessage(''); // Limpa o input na hora
 
-    if (!rateData.success) {
-      const segundosRestantes = Math.ceil((rateData.reset - Date.now()) / 1000);
-      alert(`Você está enviando mensagens muito rápido. Aguarde ${segundosRestantes} segundos.`);
-      return;
-    }
-
-    // 2. Prossegue com o envio
-    const msg = newMessage;
-    setNewMessage('');
-
-    const { error } = await supabase.from('direct_messages').insert({
+    // 1. CRIA UMA MENSAGEM FALSA (OTIMISTA) NA TELA
+    const tempId = `temp-${Date.now()}`;
+    const optimisticMsg: Message = {
+      id: tempId,
+      content: msgText,
+      created_at: new Date().toISOString(),
       sender_id: myUserId,
-      receiver_id: targetUserId,
-      content: msg
-    });
+    };
 
-    if (error) {
-      alert('Não foi possível enviar a mensagem. Você pode ter sido bloqueado por este usuário.');
-      setNewMessage(msg);
+    setMessages((prev) => [...prev, optimisticMsg]);
+
+    // 2. VERIFICA O RATE LIMIT EM BACKGROUND
+    try {
+      const rateRes = await fetch('/api/rate-limit', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ userId: myUserId })
+      });
+      
+      const rateData = await rateRes.json();
+
+      if (!rateData.success) {
+        const segundosRestantes = Math.ceil((rateData.reset - Date.now()) / 1000);
+        alert(`Muito rápido! Aguarde ${segundosRestantes} segundos.`);
+        
+        // Remove a mensagem otimista pois falhou
+        setMessages((prev) => prev.filter((msg) => msg.id !== tempId)); 
+        setNewMessage(msgText); // Devolve o texto pro input
+        return;
+      }
+
+      // 3. SALVA NO SUPABASE
+      const { error } = await supabase.from('direct_messages').insert({
+        sender_id: myUserId,
+        receiver_id: targetUserId,
+        content: msgText
+      });
+
+      if (error) {
+        alert('Não foi possível enviar. Você pode ter sido bloqueado.');
+        setMessages((prev) => prev.filter((msg) => msg.id !== tempId));
+        setNewMessage(msgText);
+      } 
+      // Se der certo, o Realtime vai trazer a mensagem real e o filtro vai remover a temporária.
+      
+    } catch (err) {
+      console.error(err);
+      setMessages((prev) => prev.filter((msg) => msg.id !== tempId));
+      setNewMessage(msgText);
     }
   };
 
-  const handleDeletarMensagem = async (id: string) => {
-    if (!confirm('Tem certeza que deseja apagar esta mensagem?')) return;
+  const handleDeletarMensagem = (id: string) => {
+    setMensagemParaDeletar(id);
+  };
 
-    const { error } = await supabase.from('direct_messages').delete().eq('id', id);
+  const confirmarDelecao = async () => {
+    if (!mensagemParaDeletar) return;
+
+    const id = mensagemParaDeletar;
+    setMensagemParaDeletar(null);
+
+    const { data, error } = await supabase
+      .from('direct_messages')
+      .delete()
+      .eq('id', id)
+      .select();
     
     if (error) {
-      alert('Erro ao apagar a mensagem.');
+      alert('Erro ao apagar a mensagem: ' + error.message);
+    } else if (!data || data.length === 0) {
+      alert('Você não tem permissão para apagar esta mensagem. Verifique as políticas do banco.');
     } else {
       setMessages((prev) => prev.filter((msg) => msg.id !== id));
     }
@@ -216,8 +270,8 @@ export default function MensagensPage() {
   }
 
   return (
-    <div className="w-full max-w-3xl mx-auto py-8 flex flex-col h-[85vh]">
-      <div className="bg-surface border border-border rounded-2xl flex flex-col flex-1 overflow-hidden shadow-lg">
+    <div className="w-full max-w-3xl mx-auto py-8 flex flex-col h-[85vh] relative">
+      <div className="bg-surface border border-border rounded-2xl flex flex-col flex-1 overflow-hidden shadow-lg relative">
         
         <div className="p-4 border-b border-border bg-bg/50 flex items-center gap-4">
           <Link href="/mensagens" className="text-muted hover:text-text transition-colors">
@@ -252,14 +306,15 @@ export default function MensagensPage() {
             messages.map((msg) => {
               const isMe = msg.sender_id === myUserId;
               const podeDeletar = isMe || isAdmin;
+              const isTemporaria = msg.id.startsWith('temp-');
 
               return (
                 <div key={msg.id} className={`flex ${isMe ? 'justify-end' : 'justify-start'} group`}>
                   <div className="flex items-center gap-2 max-w-[70%]">
-                    {podeDeletar && (
+                    {podeDeletar && !isTemporaria && (
                       <button 
                         onClick={() => handleDeletarMensagem(msg.id)}
-                        className={`opacity-0 group-hover:opacity-100 transition-opacity text-muted hover:text-red-500 ${isMe ? 'order-first' : 'order-last'}`}
+                        className={`opacity-40 group-hover:opacity-100 transition-opacity text-muted hover:text-red-500 ${isMe ? 'order-first' : 'order-last'}`}
                         title="Apagar mensagem"
                       >
                         <Trash2 size={14} />
@@ -270,10 +325,10 @@ export default function MensagensPage() {
                       isMe 
                         ? 'bg-accent text-white rounded-tr-sm' 
                         : 'bg-surface text-text rounded-tl-sm border border-border'
-                    }`}>
+                    } ${isTemporaria ? 'opacity-60' : ''}`}>
                       {msg.content}
                       <span className={`text-[10px] block mt-1 ${isMe ? 'text-white/70 text-right' : 'text-muted text-left'}`}>
-                        {formatDistanceToNow(new Date(msg.created_at), { addSuffix: true, locale: ptBR })}
+                        {isTemporaria ? 'Enviando...' : formatDistanceToNow(new Date(msg.created_at), { addSuffix: true, locale: ptBR })}
                       </span>
                     </div>
                   </div>
@@ -301,6 +356,39 @@ export default function MensagensPage() {
             <Send size={20} />
           </button>
         </form>
+
+        {/* MODAL DE CONFIRMAÇÃO DE DELEÇÃO */}
+        {mensagemParaDeletar && (
+          <div className="absolute inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm">
+            <div className="bg-surface border border-border p-6 rounded-2xl max-w-sm w-full mx-4 shadow-2xl animate-in fade-in zoom-in-95 duration-200">
+              <div className="flex items-center gap-3 mb-4 text-red-500">
+                <div className="p-2 bg-red-500/10 rounded-full">
+                  <AlertTriangle size={24} />
+                </div>
+                <h3 className="text-lg font-bold text-text">Apagar mensagem</h3>
+              </div>
+              
+              <p className="text-muted text-sm mb-6">
+                Tem certeza que deseja apagar esta mensagem? Essa ação não pode ser desfeita.
+              </p>
+              
+              <div className="flex gap-3 justify-end">
+                <button
+                  onClick={() => setMensagemParaDeletar(null)}
+                  className="px-4 py-2 rounded-lg text-sm font-bold text-muted hover:bg-border transition-colors cursor-pointer"
+                >
+                  Cancelar
+                </button>
+                <button
+                  onClick={confirmarDelecao}
+                  className="px-4 py-2 rounded-lg text-sm font-bold bg-red-500 text-white hover:bg-red-600 transition-colors cursor-pointer"
+                >
+                  Apagar
+                </button>
+              </div>
+            </div>
+          </div>
+        )}
 
       </div>
     </div>

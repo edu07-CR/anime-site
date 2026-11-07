@@ -1,0 +1,225 @@
+﻿├── app
+│   ├── @modal
+│   │   ├── (.)login
+│   │   │   └── page.tsx
+│   │   └── default.tsx
+│   ├── actions
+│   │   ├── feed.ts
+│   │   ├── feedbacks.ts
+│   │   ├── ModalComentarios.tsx
+│   │   ├── posts.ts
+│   │   └── upload.ts
+│   ├── admin
+│   │   ├── denuncias
+│   │   │   └── page.tsx
+│   │   ├── feedbacks
+│   │   │   └── page.tsx
+│   │   ├── usuarios
+│   │   │   └── page.tsx
+│   │   ├── layout.tsx
+│   │   └── page.tsx
+│   ├── amigos
+│   │   └── page.tsx
+│   ├── anime
+│   │   └── [id]
+│   │       └── page.tsx
+│   ├── api
+│   │   ├── admin
+│   │   │   ├── notificar
+│   │   │   │   └── route.ts
+│   │   │   ├── toggle-chat
+│   │   │   │   └── route.ts
+│   │   │   └── toggle-feed
+│   │   │       └── route.ts
+│   │   ├── analytics
+│   │   │   └── route.ts
+│   │   ├── anime
+│   │   │   └── [id]
+│   │   │       └── route.ts
+│   │   ├── comments
+│   │   │   ├── [id]
+│   │   │   │   └── route.ts
+│   │   │   └── route.ts
+│   │   ├── cron
+│   │   │   └── route.ts
+│   │   ├── delete-account
+│   │   │   └── route.ts
+│   │   ├── destaques
+│   │   │   └── route.ts
+│   │   ├── lancamentos-semana
+│   │   │   └── route.ts
+│   │   ├── proximos-lancamentos
+│   │   │   └── route.ts
+│   │   ├── proxy-image
+│   │   │   └── route.ts
+│   │   ├── rate-limit
+│   │   │   └── route.ts
+│   │   ├── search-anime
+│   │   │   └── route.tsx
+│   │   ├── test-anilist
+│   │   │   └── route.ts
+│   │   └── top10-image
+│   │       └── route.tsx
+│   ├── auth
+│   │   └── callback
+│   │       └── route.ts
+│   ├── chat
+│   │   └── page.tsx
+│   ├── compartilhar
+│   │   ├── teste
+│   │   │   └── page.tsx
+│   │   ├── [username]
+│   │   │   └── page.tsx
+│   │   └── layout.tsx
+│   ├── completar-perfil
+│   │   └── page.tsx
+│   ├── destaques
+│   │   ├── DestaquesClient.tsx
+│   │   └── page.tsx
+│   ├── esqueceu-senha
+│   │   └── page.tsx
+│   ├── exclusao-de-dados
+│   │   └── page.tsx
+│   ├── feed
+│   │   ├── [id]
+│   │   │   ├── opengraph-image.tsx
+│   │   │   └── page.tsx
+│   │   └── page.tsx
+│   ├── login
+│   │   └── page.tsx
+│   ├── mensagens
+│   │   ├── [id]
+│   │   │   └── page.tsx
+│   │   ├── ChatComunidade.tsx
+│   │   └── page.tsx
+│   ├── perfil
+│   │   ├── configuracoes
+│   │   │   └── page.tsx
+│   │   ├── [username]
+│   │   │   └── page.tsx
+│   │   └── page.tsx
+│   ├── privacidade
+│   │   └── page.tsx
+│   ├── proximos-lancamentos
+│   │   └── page.tsx
+│   ├── redefinir-senha
+│   │   ├── layout.tsx
+│   │   └── page.tsx
+│   ├── termos
+│   │   └── page.tsx
+│   ├── top10
+│   │   └── page.tsx
+│   ├── globals.css
+│   ├── icon.svg
+│   ├── layout.tsx
+│   ├── page.tsx
+│   ├── robots.ts
+│   └── sitemap.ts
+├── components
+│   ├── admin
+│   │   ├── AdminTabs.tsx
+│   │   ├── BotaoNotificar.tsx
+│   │   ├── CardFeedback.tsx
+│   │   ├── GerenciarStreaming.tsx
+│   │   ├── GraficoAnalytics.tsx
+│   │   ├── ToggleAPI.tsx
+│   │   ├── ToggleChat.tsx
+│   │   └── ToggleFeed.tsx
+│   ├── anime
+│   │   ├── AcoesAnime.tsx
+│   │   ├── BannerGeek.tsx
+│   │   ├── BotaoAssistir.tsx
+│   │   ├── BotaoCompartilhar.tsx
+│   │   ├── BotaoEsperaAniList.tsx
+│   │   ├── BotaoTrailer.tsx
+│   │   ├── OndeAssistir.tsx
+│   │   └── SecaoComentarios.tsx
+│   ├── feed
+│   │   ├── BannerGlobal.tsx
+│   │   ├── CarrosselImagens.tsx
+│   │   ├── CriadorPost.tsx
+│   │   ├── ModalComentarios.tsx
+│   │   ├── TopCriadores.tsx
+│   │   └── TrendingAnimes.tsx
+│   ├── lancamentos
+│   │   ├── CardAnime.tsx
+│   │   ├── GridAnimes.tsx
+│   │   └── SeletorDias.tsx
+│   ├── layout
+│   │   ├── lancamentos
+│   │   │   ├── CardAnime.tsx
+│   │   │   ├── GridAnimes.tsx
+│   │   │   └── SeletorDias.tsx
+│   │   ├── BuscaGlobal.tsx
+│   │   ├── EspacoAnuncio.tsx
+│   │   ├── Footer.tsx
+│   │   ├── MetaChat.tsx
+│   │   ├── ModalFeedback.tsx
+│   │   ├── Navbar.tsx
+│   │   ├── Notificacoes.tsx
+│   │   ├── SeloAdmin.tsx
+│   │   ├── TelaBloqueio.tsx
+│   │   └── ThemeToggle.tsx
+│   ├── perfil
+│   │   ├── BotaoBloquear.tsx
+│   │   ├── BotaoSeguir.tsx
+│   │   ├── DeletarConta.tsx
+│   │   └── SelecionarAvatar.tsx
+│   └── top10
+│       ├── BotaoPostarFeed.tsx
+│       ├── GeradorCard.tsx
+│       ├── PreviewTop10.tsx
+│       └── StoriesPlayer.tsx
+├── lib
+│   ├── aniliist
+│   │   ├── animeService.ts
+│   │   ├── client.ts
+│   │   ├── getAnimeById.ts
+│   │   ├── mappers.ts
+│   │   ├── queries.ts
+│   │   └── types.ts
+│   ├── supabase
+│   │   ├── client.ts
+│   │   └── server.ts
+│   ├── traduzirTitulo
+│   │   └── tradutor.ts
+│   ├── date-utils.ts
+│   ├── disponibilidade.ts
+│   ├── rate-limit.ts
+│   └── utils
+├── public
+│   ├── avatars
+│   │   ├── Aria.png
+│   │   ├── Astra.png
+│   │   ├── Ignis.png
+│   │   ├── Kira.png
+│   │   ├── Koby.png
+│   │   ├── Maya.png
+│   │   ├── Nyx.png
+│   │   └── Orion.png
+│   ├── sounds
+│   │   ├── musica-fundo.mp3
+│   │   └── whoosh.mp3
+│   ├── file.svg
+│   ├── globe.svg
+│   ├── next.svg
+│   ├── sw.js
+│   ├── teste.html
+│   ├── vercel.svg
+│   └── window.svg
+├── .env.local
+├── .gitignore
+├── AGENTS.md
+├── dump.txt
+├── eslint.config.mjs
+├── estrutura.txt
+├── lista_arquivos.txt
+├── next-env.d.ts
+├── next.config.ts
+├── package-lock.json
+├── package.json
+├── postcss.config.js
+├── proxy.ts
+├── README.md
+├── tsconfig.json
+└── vercel.json
