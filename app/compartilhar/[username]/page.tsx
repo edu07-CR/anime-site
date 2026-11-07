@@ -60,7 +60,7 @@ async function getTop10Data(username: string) {
   return { profile, animes };
 }
 
-// 2. SEO: Gerando metadados dinâmicos (OpenGraph) para o link ficar bonito no WhatsApp/Twitter
+// 2. SEO: Gerando metadados dinâmicos (OpenGraph) com a nossa imagem gerada!
 export async function generateMetadata({ params }: { params: Promise<{ username: string }> }): Promise<Metadata> {
   const resolvedParams = await params;
   const data = await getTop10Data(resolvedParams.username);
@@ -70,6 +70,11 @@ export async function generateMetadata({ params }: { params: Promise<{ username:
   }
 
   const { profile, animes } = data;
+  const baseUrl = process.env.NEXT_PUBLIC_SITE_URL || 'https://www.aniverse.com.br';
+
+  // Monta a URL da nossa API de gerar imagem do Top 10!
+  const animesParam = encodeURIComponent(JSON.stringify(animes));
+  const ogImageUrl = `${baseUrl}/api/top10-image?username=${profile.username}&animes=${animesParam}&tema=padrao`;
 
   return {
     title: `Top 10 de @${profile.username} | AniVerse`,
@@ -77,9 +82,22 @@ export async function generateMetadata({ params }: { params: Promise<{ username:
     openGraph: {
       title: `Top 10 de @${profile.username} | AniVerse`,
       description: `O ranking definitivo de animes de @${profile.username}.`,
-      images: animes[0]?.coverUrl ? [animes[0].coverUrl] : [],
+      images: [
+        {
+          url: ogImageUrl,
+          width: 1080,
+          height: 1350,
+          alt: `Top 10 de ${profile.username}`,
+        }
+      ],
       type: 'website',
     },
+    twitter: {
+      card: 'summary_large_image',
+      title: `Top 10 de @${profile.username} | AniVerse`,
+      description: `O ranking definitivo de animes de @${profile.username}.`,
+      images: [ogImageUrl],
+    }
   };
 }
 
@@ -132,7 +150,6 @@ export default async function Top10CompartilharPage({ params }: { params: Promis
             </div>
             <span className="text-sm font-bold text-text">@{profile.username}</span>
           </div>
-          {/* O CarrosselImagens continua sendo um Client Component, mas pode ser importado aqui tranquilamente */}
           <CarrosselImagens imagens={imagensCarrossel} isRanking={true} />
         </div>
 
