@@ -42,20 +42,34 @@ export async function GET(req: NextRequest) {
     let animes = JSON.parse(animesParam);
     if (isOG) animes = animes.slice(0, 6);
 
-    const animesComImagens = await Promise.all(
-      animes.map(async (anime: any) => {
-        try {
-          const url = isOG ? anime.coverUrl.replace('/extraLarge/', '/large/') : anime.coverUrl;
-          const response = await fetch(url);
-          const arrayBuffer = await response.arrayBuffer();
-          const base64 = Buffer.from(arrayBuffer).toString('base64');
-          const mimeType = response.headers.get('content-type') || 'image/jpeg';
-          return { ...anime, coverBase64: `data:${mimeType};base64,${base64}` };
-        } catch (e) {
-          return { ...anime, coverBase64: anime.coverUrl };
-        }
-      })
-    );
+    // Busca as imagens dos animes E A LOGO ao mesmo tempo
+    const baseUrl = process.env.NEXT_PUBLIC_SITE_URL || 'https://www.aniverse.com.br';
+    
+    const [animesComImagens, logoRes] = await Promise.all([
+      Promise.all(
+        animes.map(async (anime: any) => {
+          try {
+            const url = isOG ? anime.coverUrl.replace('/extraLarge/', '/large/') : anime.coverUrl;
+            const response = await fetch(url);
+            const arrayBuffer = await response.arrayBuffer();
+            const base64 = Buffer.from(arrayBuffer).toString('base64');
+            const mimeType = response.headers.get('content-type') || 'image/jpeg';
+            return { ...anime, coverBase64: `data:${mimeType};base64,${base64}` };
+          } catch (e) {
+            return { ...anime, coverBase64: anime.coverUrl };
+          }
+        })
+      ),
+      // Baixa a logo oficial do seu site
+      fetch(`${baseUrl}/icon.svg`).catch(() => null)
+    ]);
+
+    // Converte a logo para base64 para o @vercel/og aceitar
+    let logoBase64 = '';
+    if (logoRes && logoRes.ok) {
+      const logoBuffer = await logoRes.arrayBuffer();
+      logoBase64 = `data:image/svg+xml;base64,${Buffer.from(logoBuffer).toString('base64')}`;
+    }
 
     const width = isOG ? 1200 : 1080;
     const height = isOG ? 630 : 1350;
@@ -101,11 +115,18 @@ export async function GET(req: NextRequest) {
             ))}
           </div>
 
+          {/* LOGO OFICIAL NO RODAPÉ (Só aparece no card completo, não no OG do WhatsApp) */}
           {!isOG && (
             <div style={{ display: 'flex', alignItems: 'center', gap: '12px', marginTop: '40px' }}>
-              <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', width: '40px', height: '40px', borderRadius: '50%', border: `4px solid ${theme.primary}` }}>
-                <span style={{ color: theme.primary, fontWeight: '900', fontSize: '20px', marginTop: '4px' }}>A</span>
-              </div>
+              {logoBase64 ? (
+                // eslint-disable-next-line @next/next/no-img-element
+                <img src={logoBase64} alt="AniVerse Logo" style={{ width: '40px', height: '40px' }} />
+              ) : (
+                <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', width: '40px', height: '40px', borderRadius: '50%', border: `4px solid ${theme.primary}` }}>
+                  <span style={{ color: theme.primary, fontWeight: '900', fontSize: '20px', marginTop: '4px' }}>A</span>
+                </div>
+              )}
+              
               <span style={{ color: theme.text, fontSize: '24px', fontWeight: 'bold', letterSpacing: '2px' }}>
                 <span style={{ color: theme.primary }}>ANI</span>VERSE
               </span>

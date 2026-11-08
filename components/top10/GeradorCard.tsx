@@ -4,6 +4,7 @@ import { useState } from 'react';
 import { BotaoPostarFeed } from './BotaoPostarFeed';
 import { CarrosselImagens } from '@/components/feed/CarrosselImagens';
 import { MessageSquareText, Palette, Check } from 'lucide-react';
+import Image from 'next/image';
 
 interface AnimeData {
   id: number;
@@ -18,7 +19,7 @@ const OPCOES_TEMAS = [
   { id: 'aesthetic', nome: 'Aesthetic', corFundo: 'bg-[#f6f5f2]', corBorda: 'border-purple-400' },
 ];
 
-export function GeradorCard({ animes, username, feedLiberado }: { animes: AnimeData[], username: string, feedLiberado: boolean }) {
+export function GeradorCard({ animes, username, feedLiberado, avatarUrl }: { animes: AnimeData[], username: string, feedLiberado: boolean, avatarUrl?: string }) {
   const [legenda, setLegenda] = useState('');
   const [temaSelecionado, setTemaSelecionado] = useState('padrao');
 
@@ -75,12 +76,14 @@ export function GeradorCard({ animes, username, feedLiberado }: { animes: AnimeD
         className="w-full max-w-md mx-auto mb-4 rounded-xl overflow-hidden transition-all duration-300"
         style={{ backgroundColor: previewBg }}
       >
+        {/* CABEÇALHO COM O AVATAR */}
         <div className="p-3 flex items-center gap-2 border-b" style={{ borderColor: 'rgba(255,255,255,0.1)' }}>
-          <div 
-            className="w-6 h-6 rounded-full flex items-center justify-center text-xs font-bold text-white"
-            style={{ backgroundColor: accentBg }}
-          >
-            A
+          <div className="w-6 h-6 flex items-center justify-center relative">
+            {avatarUrl ? (
+              <Image src={avatarUrl} alt={username} fill className="object-cover rounded-full" />
+            ) : (
+              <img src="/icon.svg" alt="AniVerse" className="w-full h-full object-contain" />
+            )}
           </div>
           <span className="text-sm font-bold" style={{ color: previewText }}>@{username}</span>
           <span className="ml-auto text-xs uppercase tracking-widest opacity-70" style={{ color: previewText }}>Top 10</span>
@@ -96,14 +99,14 @@ export function GeradorCard({ animes, username, feedLiberado }: { animes: AnimeD
           <CarrosselImagens imagens={imagensCarrossel} isRanking={true} />
         </div>
 
-        <div className="p-3 flex justify-center items-center gap-2 opacity-80">
-          <div 
-            className="w-4 h-4 rounded-full border-2 flex items-center justify-center"
-            style={{ borderColor: previewText, color: previewText }}
-          >
-             <span className="text-[8px] font-bold">A</span>
+        {/* RODAPÉ: LOGO + NIVERSE (COLADOS) */}
+        <div className="p-3 flex justify-center items-center opacity-80">
+          <div className="flex items-center">
+            <img src="/icon.svg" alt="AniVerse Logo" className="w-7 h-7" /> 
+            <span className="-ml-1.4 text-sm font-bold tracking-widest" style={{ color: previewText }}>
+              ANIVERSE
+            </span>
           </div>
-          <span className="text-xs font-bold tracking-widest" style={{ color: previewText }}>ANIVERSE</span>
         </div>
       </div>
 
